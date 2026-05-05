@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoleMates — Shoe Trading for Amputees</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;0,900;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cream: #F5F0E8; --warm-white: #FDFAF5; --charcoal: #1C1C1A;
+    --terracotta: #C4622D; --sage: #7A9E7E; --light-sage: #E8F0E9;
+    --gold: #D4A847; --mid-gray: #888880; --light-gray: #E8E5DF;
+    --left-color: #C4622D; --right-color: #7A9E7E;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--charcoal); min-height: 100vh; }
+
+  nav { background: var(--charcoal); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 900; color: var(--cream); letter-spacing: -0.5px; }
+  .logo span { color: var(--terracotta); }
+  .nav-links { display: flex; gap: 0.5rem; list-style: none; }
+  .nav-links button { background: none; border: none; color: var(--mid-gray); font-family: 'DM Sans', sans-serif; font-size: 0.875rem; font-weight: 500; padding: 0.5rem 1rem; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
+  .nav-links button:hover { color: var(--cream); background: rgba(255,255,255,0.08); }
+  .nav-cta { background: var(--terracotta) !important; color: white !important; }
+
+  .user-banner { background: var(--warm-white); border-bottom: 1px solid var(--light-gray); padding: 0.5rem 2rem; display: none; align-items: center; justify-content: flex-end; gap: 0.75rem; font-size: 0.85rem; color: var(--mid-gray); }
+  .user-banner strong { color: var(--charcoal); }
+  .user-banner button { background: none; border: none; color: var(--terracotta); cursor: pointer; font-size: 0.8rem; font-family: 'DM Sans', sans-serif; }
+
+  .hero { background: var(--charcoal); padding: 5rem 2rem 4rem; text-align: center; position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 50%, rgba(196,98,45,0.15) 0%, transparent 60%), radial-gradient(ellipse at 70% 50%, rgba(122,158,126,0.12) 0%, transparent 60%); pointer-events: none; }
+  .hero-eyebrow { display: inline-block; background: rgba(212,168,71,0.15); color: var(--gold); font-size: 0.75rem; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; padding: 0.4rem 1rem; border-radius: 100px; border: 1px solid rgba(212,168,71,0.3); margin-bottom: 1.5rem; }
+  .hero h1 { font-family: 'Fraunces', serif; font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 900; color: var(--cream); line-height: 1.05; max-width: 700px; margin: 0 auto 1.25rem; letter-spacing: -1px; }
+  .hero h1 em { font-style: italic; font-weight: 300; color: var(--terracotta); }
+  .hero p { color: var(--mid-gray); font-size: 1.1rem; max-width: 480px; margin: 0 auto 2.5rem; line-height: 1.6; }
+  .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+  .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.75rem; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+  .btn-primary { background: var(--terracotta); color: white; }
+  .btn-primary:hover { background: #b5572a; transform: translateY(-1px); }
+  .btn-secondary { background: transparent; color: var(--cream); border: 1.5px solid rgba(255,255,255,0.2); }
+  .btn-secondary:hover { border-color: rgba(255,255,255,0.5); }
+  .btn-ghost { background: var(--light-gray); color: var(--charcoal); }
+  .btn-ghost:hover { background: #d8d5cf; }
+  .btn-submit { background: var(--terracotta); color: white; }
+  .btn-submit:hover { background: #b5572a; }
+
+  .stats { background: var(--warm-white); border-bottom: 1px solid var(--light-gray); display: flex; justify-content: center; }
+  .stat { padding: 1.25rem 3rem; text-align: center; border-right: 1px solid var(--light-gray); }
+  .stat:last-child { border-right: none; }
+  .stat-num { font-family: 'Fraunces', serif; font-size: 1.75rem; font-weight: 900; color: var(--charcoal); }
+  .stat-label { font-size: 0.75rem; color: var(--mid-gray); text-transform: uppercase; letter-spacing: 1px; margin-top: 0.1rem; }
+
+  .main-container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+  .section-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
+  .section-title { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 600; color: var(--charcoal); }
+
+  .filters { display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap; align-items: center; }
+  .filter-label { font-size: 0.8rem; color: var(--mid-gray); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+  .filter-btn { padding: 0.4rem 1rem; border-radius: 100px; border: 1.5px solid var(--light-gray); background: white; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; color: var(--charcoal); }
+  .filter-btn.active { border-color: var(--terracotta); background: #FDF3EE; color: var(--terracotta); }
+  .filter-btn.left-active { border-color: var(--left-color); background: #FDF3EE; color: var(--left-color); }
+  .filter-btn.right-active { border-color: var(--right-color); background: var(--light-sage); color: var(--right-color); }
+
+  .matches-banner { background: linear-gradient(135deg, #3d2e1a, #1C1C1A); border: 1px solid rgba(212,168,71,0.3); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: none; }
+  .matches-banner.show { display: block; }
+  .matches-banner-title { font-family: 'Fraunces', serif; color: var(--gold); font-size: 0.9rem; font-weight: 600; margin-bottom: 0.4rem; }
+  .matches-banner p { color: rgba(245,240,232,0.7); font-size: 0.82rem; }
+
+  .listings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; }
+  .listing-card { background: white; border-radius: 14px; overflow: hidden; border: 1.5px solid var(--light-gray); transition: all 0.25s; position: relative; }
+  .listing-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+  .match-glow { border-color: var(--gold) !important; }
+  .match-badge { position: absolute; top: 0.75rem; right: 0.75rem; background: var(--gold); color: #5a3e00; font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 100px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .card-top { padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid var(--light-gray); display: flex; align-items: center; gap: 1rem; }
+  .shoe-icon { width: 56px; height: 56px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; flex-shrink: 0; }
+  .shoe-icon.left { background: #FDF3EE; }
+  .shoe-icon.right { background: var(--light-sage); }
+  .card-meta { flex: 1; min-width: 0; }
+  .card-shoe-name { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 600; color: var(--charcoal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-cond { font-size: 0.8rem; color: var(--mid-gray); margin-top: 0.1rem; }
+  .side-badge { display: inline-flex; align-items: center; padding: 0.25rem 0.7rem; border-radius: 100px; font-size: 0.75rem; font-weight: 500; flex-shrink: 0; }
+  .side-badge.left { background: #FDF3EE; color: var(--left-color); border: 1px solid rgba(196,98,45,0.2); }
+  .side-badge.right { background: var(--light-sage); color: var(--right-color); border: 1px solid rgba(122,158,126,0.3); }
+  .card-body { padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+  .size-num { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 900; color: var(--charcoal); line-height: 1; }
+  .size-label { font-size: 0.7rem; color: var(--mid-gray); text-transform: uppercase; letter-spacing: 1px; margin-top: 0.1rem; }
+  .card-notes { padding: 0 1.25rem 0.75rem; font-size: 0.8rem; color: var(--mid-gray); line-height: 1.5; }
+  .card-footer { padding: 0.75rem 1.25rem; background: var(--warm-white); border-top: 1px solid var(--light-gray); display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .looking-for { font-size: 0.78rem; color: var(--mid-gray); }
+  .looking-for strong { color: var(--charcoal); }
+  .contact-btn { padding: 0.4rem 0.9rem; background: var(--charcoal); color: white; border: none; border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .contact-btn:hover { background: var(--terracotta); }
+  .delete-btn { padding: 0.35rem 0.65rem; background: transparent; color: #e53935; border: 1px solid rgba(229,57,53,0.35); border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
+  .delete-btn:hover { background: #fdecea; }
+  .my-label { font-size: 0.75rem; color: var(--mid-gray); padding: 0.35rem 0.5rem; }
+
+  .loading-state { text-align: center; padding: 4rem 2rem; color: var(--mid-gray); grid-column: 1/-1; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--light-gray); border-top-color: var(--terracotta); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty-state { text-align: center; padding: 4rem 2rem; color: var(--mid-gray); grid-column: 1/-1; }
+  .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+  .overlay.open { display: flex; }
+  .modal { background: white; border-radius: 18px; width: 100%; max-width: 480px; overflow: hidden; animation: slideUp 0.3s ease; max-height: 90vh; display: flex; flex-direction: column; }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-header { background: var(--charcoal); padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+  .modal-title { font-family: 'Fraunces', serif; font-size: 1.25rem; font-weight: 600; color: var(--cream); }
+  .modal-close { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; color: white; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+  .modal-close:hover { background: rgba(255,255,255,0.2); }
+  .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 0 1.5rem 1.5rem; display: flex; gap: 0.75rem; flex-shrink: 0; }
+
+  .form-group { margin-bottom: 1.25rem; }
+  label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--charcoal); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; }
+  input, select, textarea { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--light-gray); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--charcoal); background: var(--warm-white); transition: border-color 0.2s; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--terracotta); background: white; }
+  textarea { resize: vertical; min-height: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .side-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .side-option { border: 2px solid var(--light-gray); border-radius: 10px; padding: 1rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .side-option:hover { border-color: var(--mid-gray); }
+  .side-option.selected-left { border-color: var(--left-color); background: #FDF3EE; }
+  .side-option.selected-right { border-color: var(--right-color); background: var(--light-sage); }
+  .side-option-icon { font-size: 1.75rem; margin-bottom: 0.3rem; }
+  .side-option-text { font-size: 0.85rem; font-weight: 500; }
+
+  .alert { padding: 0.9rem 1.1rem; border-radius: 8px; font-size: 0.875rem; margin-bottom: 1rem; display: none; }
+  .alert.show { display: block; }
+  .alert-success { background: var(--light-sage); border: 1px solid rgba(122,158,126,0.4); color: #2e5e31; }
+  .alert-error { background: #fdecea; border: 1px solid rgba(229,57,53,0.3); color: #c62828; }
+
+  /* MESSAGE MODAL */
+  .msg-modal { max-width: 540px; }
+  .msg-listing-info { background: var(--warm-white); border: 1px solid var(--light-gray); border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; }
+  .msg-thread { display: flex; flex-direction: column; gap: 0.75rem; min-height: 140px; max-height: 260px; overflow-y: auto; padding: 0.5rem 0; margin-bottom: 1rem; }
+  .msg-bubble { max-width: 82%; padding: 0.7rem 1rem; border-radius: 12px; font-size: 0.88rem; line-height: 1.5; }
+  .msg-bubble.sent { background: var(--charcoal); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg-bubble.received { background: var(--light-gray); color: var(--charcoal); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .msg-meta { font-size: 0.7rem; opacity: 0.55; margin-top: 0.2rem; }
+  .msg-meta.right { text-align: right; }
+  .no-msgs { color: var(--mid-gray); font-size: 0.85rem; text-align: center; padding: 2rem 0; font-style: italic; }
+  .msg-compose { display: flex; gap: 0.5rem; }
+  .msg-compose input { flex: 1; }
+  .msg-send-btn { padding: 0.75rem 1rem; background: var(--terracotta); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; white-space: nowrap; }
+  .msg-send-btn:hover { background: #b5572a; }
+  .msg-sender-row { margin-top: 0.75rem; }
+  .msg-sender-row label { text-transform: none; letter-spacing: 0; font-size: 0.75rem; margin-bottom: 0.3rem; }
+
+  .how-it-works { background: var(--charcoal); padding: 3.5rem 2rem; margin-top: 3rem; }
+  .hiw-inner { max-width: 900px; margin: 0 auto; }
+  .hiw-title { font-family: 'Fraunces', serif; font-size: 1.75rem; font-weight: 900; color: var(--cream); text-align: center; margin-bottom: 2.5rem; }
+  .hiw-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; }
+  .hiw-step { text-align: center; }
+  .hiw-num { width: 44px; height: 44px; border-radius: 50%; background: rgba(196,98,45,0.2); border: 1.5px solid rgba(196,98,45,0.4); color: var(--terracotta); font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 900; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
+  .hiw-step h3 { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 600; color: var(--cream); margin-bottom: 0.5rem; }
+  .hiw-step p { font-size: 0.875rem; color: var(--mid-gray); line-height: 1.6; }
+
+  .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--charcoal); color: white; padding: 0.75rem 1.5rem; border-radius: 100px; font-size: 0.875rem; z-index: 999; transition: transform 0.3s ease; white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,0.25); }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 600px) {
+    .stats { flex-wrap: wrap; }
+    .stat { border-right: none; border-bottom: 1px solid var(--light-gray); width: 50%; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Sole<span>Mates</span></div>
+  <ul class="nav-links">
+    <li><button onclick="scrollToBrowse()">Browse</button></li>
+    <li><button class="nav-cta" onclick="openListModal()">+ List a Shoe</button></li>
+  </ul>
+</nav>
+
+<div class="user-banner" id="user-banner">
+  Logged in as <strong id="banner-username"></strong>
+  <button onclick="changeUser()">Switch user</button>
+</div>
+
+<div class="hero">
+  <div class="hero-eyebrow">A Community Built on Shared Steps</div>
+  <h1>Find the <em>other half</em> of your pair.</h1>
+  <p>A trading community for amputees to match unused shoes with someone who needs exactly the other one.</p>
+  <div class="hero-actions">
+    <button class="btn btn-primary" onclick="scrollToBrowse()">Browse Listings</button>
+    <button class="btn btn-secondary" onclick="openListModal()">List Your Shoe</button>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-num" id="stat-listings">—</div><div class="stat-label">Active Listings</div></div>
+  <div class="stat"><div class="stat-num" id="stat-matches">—</div><div class="stat-label">Matched Pairs</div></div>
+  <div class="stat"><div class="stat-num">Free</div><div class="stat-label">Always &amp; Forever</div></div>
+</div>
+
+<div class="main-container" id="browse-section">
+  <div class="section-header">
+    <h2 class="section-title">Available Shoes</h2>
+    <button class="btn btn-primary" onclick="openListModal()" style="font-size:0.85rem;padding:0.6rem 1.25rem;">+ List a Shoe</button>
+  </div>
+
+  <div class="matches-banner" id="matches-banner">
+    <div class="matches-banner-title">✨ We found matches for your shoe!</div>
+    <p id="matches-banner-text"></p>
+  </div>
+
+  <div class="filters">
+    <span class="filter-label">Filter:</span>
+    <button class="filter-btn active" onclick="filterListings('all', this)">All</button>
+    <button class="filter-btn" onclick="filterListings('Left', this)">Left shoes</button>
+    <button class="filter-btn" onclick="filterListings('Right', this)">Right shoes</button>
+  </div>
+
+  <div class="listings-grid" id="listings-grid">
+    <div class="loading-state"><div class="spinner"></div><p>Loading listings…</p></div>
+  </div>
+</div>
+
+<div class="how-it-works">
+  <div class="hiw-inner">
+    <h2 class="hiw-title">How SoleMates Works</h2>
+    <div class="hiw-steps">
+      <div class="hiw-step"><div class="hiw-num">1</div><h3>Create a Listing</h3><p>Share your username, shoe size, brand, style, and which foot you have available.</p></div>
+      <div class="hiw-step"><div class="hiw-num">2</div><h3>Browse &amp; Match</h3><p>We automatically highlight listings where someone has the opposite shoe in your exact size.</p></div>
+      <div class="hiw-step"><div class="hiw-num">3</div><h3>Message Directly</h3><p>Use the built-in messaging to connect and arrange your trade — no email needed.</p></div>
+      <div class="hiw-step"><div class="hiw-num">4</div><h3>Walk On</h3><p>Both of you end up with the shoe you need. Zero waste, pure community.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- USERNAME PROMPT MODAL -->
+<div class="overlay open" id="username-overlay">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><span class="modal-title">Welcome to SoleMates 👟</span></div>
+    <div class="modal-body">
+      <p style="color:var(--mid-gray);font-size:0.9rem;margin-bottom:1.25rem;line-height:1.6">Choose a username to get started. This is the only info we need from you!</p>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Pick a Username</label>
+        <input type="text" id="prompt-username" placeholder="e.g. trailrunner_mike" onkeydown="if(event.key==='Enter')saveUsername()" />
+      </div>
+      <div class="alert alert-error" id="username-error" style="margin-top:0.75rem;margin-bottom:0"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" style="flex:1" onclick="skipUsername()">Browse only</button>
+      <button class="btn btn-submit" style="flex:2" onclick="saveUsername()">Continue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIST SHOE MODAL -->
+<div class="overlay" id="list-overlay" onclick="closeOverlay('list-overlay',event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">List a Shoe</span>
+      <button class="modal-close" onclick="closeModal('list-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-success" id="list-success">🎉 Your listing is live! Checking for matches…</div>
+      <div class="alert alert-error" id="list-error"></div>
+      <div class="form-group">
+        <label>Your Username</label>
+        <input type="text" id="input-username" placeholder="e.g. trailrunner_mike" />
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0"><label>Shoe Brand</label><input type="text" id="input-brand" placeholder="e.g. Nike, Brooks" /></div>
+        <div class="form-group" style="margin-bottom:0"><label>Style / Model</label><input type="text" id="input-style" placeholder="e.g. Air Max 90" /></div>
+      </div>
+      <div class="form-row" style="margin-top:1.25rem">
+        <div class="form-group" style="margin-bottom:0">
+          <label>US Shoe Size</label>
+          <select id="input-size">
+            <option value="">Select size</option>
+            <option>5</option><option>5.5</option><option>6</option><option>6.5</option>
+            <option>7</option><option>7.5</option><option>8</option><option>8.5</option>
+            <option>9</option><option>9.5</option><option>10</option><option>10.5</option>
+            <option>11</option><option>11.5</option><option>12</option><option>12.5</option>
+            <option>13</option><option>14</option><option>15</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Condition</label>
+          <select id="input-condition">
+            <option>New / Never Worn</option><option>Like New</option><option>Good</option><option>Worn but solid</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:1.25rem">
+        <label>Shoe I Have Available</label>
+        <div class="side-selector">
+          <div class="side-option" id="opt-left" onclick="selectSide('Left')"><div class="side-option-icon">👟</div><div class="side-option-text">Left Shoe</div></div>
+          <div class="side-option" id="opt-right" onclick="selectSide('Right')"><div class="side-option-icon">👟</div><div class="side-option-text">Right Shoe</div></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="input-notes" placeholder="Color, width, shipping preference…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('list-overlay')">Cancel</button>
+      <button class="btn btn-submit" style="flex:2" id="list-btn" onclick="submitListing()">Post Listing →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGE MODAL -->
+<div class="overlay" id="msg-overlay" onclick="closeOverlay('msg-overlay',event)">
+  <div class="modal msg-modal">
+    <div class="modal-header">
+      <span class="modal-title" id="msg-title">Message</span>
+      <button class="modal-close" onclick="closeModal('msg-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="msg-listing-info" id="msg-info"></div>
+      <div class="msg-thread" id="msg-thread"><div class="no-msgs">No messages yet. Say hello!</div></div>
+      <div class="msg-compose">
+        <input type="text" id="msg-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMessage()" />
+        <button class="msg-send-btn" onclick="sendMessage()">Send →</button>
+      </div>
+      <div class="msg-sender-row">
+        <label>Sending as:</label>
+        <input type="text" id="msg-sender" placeholder="Your username" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('msg-overlay')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://omgdcelfbddwigozhdoc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tZ2RjZWxmYmRkd2lnb3poZG9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjEzMTEsImV4cCI6MjA5MzU5NzMxMX0.Gq7h5uxCuHWjud5V4BCcXGQdnrI7PNcxS5ohSggu6sw';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = localStorage.getItem('sm_user') || null;
+let allListings = [];
+let currentFilter = 'all';
+let activeListing = null;
+let selectedSide = null;
+let msgChannel = null;
+let afterLogin = null;
+
+// ── INIT ──────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (currentUser) {
+    closeModal('username-overlay');
+    updateBanner();
+  }
+  loadListings();
+  subscribeListings();
+});
+
+// ── USER ──────────────────────────────────────────────────
+function updateBanner() {
+  const b = document.getElementById('user-banner');
+  if (currentUser) {
+    b.style.display = 'flex';
+    document.getElementById('banner-username').textContent = currentUser;
+  } else {
+    b.style.display = 'none';
+  }
+}
+
+function saveUsername() {
+  const v = document.getElementById('prompt-username').value.trim();
+  if (v.length < 2) { showAlert('username-error','At least 2 characters please.'); return; }
+  if (!/^[a-zA-Z0-9_]+$/.test(v)) { showAlert('username-error','Letters, numbers, underscores only.'); return; }
+  currentUser = v;
+  localStorage.setItem('sm_user', v);
+  updateBanner();
+  closeModal('username-overlay');
+  if (afterLogin) { afterLogin(); afterLogin = null; }
+}
+
+function skipUsername() {
+  closeModal('username-overlay');
+}
+
+function changeUser() {
+  localStorage.removeItem('sm_user');
+  currentUser = null;
+  updateBanner();
+  showToast('Switched to browse-only mode');
+}
+
+function requireUser(cb) {
+  if (currentUser) { cb(); return; }
+  afterLogin = cb;
+  document.getElementById('prompt-username').value = '';
+  document.getElementById('username-error').classList.remove('show');
+  document.getElementById('username-overlay').classList.add('open');
+}
+
+// ── LISTINGS ──────────────────────────────────────────────
+async function loadListings() {
+  try {
+    const { data, error } = await sb.from('listings').select('*').eq('active', true).order('created_at', { ascending: false });
+    if (error) throw error;
+    allListings = data || [];
+    renderListings(currentFilter);
+    updateStats();
+    checkMatches();
+  } catch(e) {
+    document.getElementById('listings-grid').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">⚠️</div>
+      <p><strong>Database not set up yet.</strong><br><small>Run the SQL setup below, then refresh.</small></p></div>`;
+  }
+}
+
+function subscribeListings() {
+  sb.channel('listings-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'listings' }, () => loadListings())
+    .subscribe();
+}
+
+function getMatchIds() {
+  const ids = new Set();
+  if (!currentUser) return ids;
+  const mine = allListings.filter(l => l.username === currentUser);
+  const others = allListings.filter(l => l.username !== currentUser);
+  mine.forEach(m => {
+    const opp = m.side === 'Left' ? 'Right' : 'Left';
+    others.forEach(o => { if (o.side === opp && o.size === m.size) ids.add(o.id); });
+  });
+  return ids;
+}
+
+function checkMatches() {
+  const ids = getMatchIds();
+  const banner = document.getElementById('matches-banner');
+  document.getElementById('stat-matches').textContent = ids.size || '0';
+  if (ids.size > 0) {
+    banner.classList.add('show');
+    document.getElementById('matches-banner-text').textContent =
+      `${ids.size} listing${ids.size > 1 ? 's match' : ' matches'} your shoe — highlighted below.`;
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function renderListings(filter) {
+  const grid = document.getElementById('listings-grid');
+  const list = filter === 'all' ? allListings : allListings.filter(l => l.side === filter);
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">👟</div><p>No listings yet. Be the first!</p></div>`;
+    return;
+  }
+  const matchIds = getMatchIds();
+  grid.innerHTML = list.map(l => {
+    const sc = l.side === 'Left' ? 'left' : 'right';
+    const opp = l.side === 'Left' ? 'Right' : 'Left';
+    const isMatch = matchIds.has(l.id);
+    const isMine = currentUser && l.username === currentUser;
+    const listingJson = JSON.stringify(l).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+    return `<div class="listing-card ${isMatch ? 'match-glow' : ''}">
+      ${isMatch ? '<div class="match-badge">✨ Match!</div>' : ''}
+      <div class="card-top">
+        <div class="shoe-icon ${sc}">👟</div>
+        <div class="card-meta">
+          <div class="card-shoe-name">${esc(l.brand)} ${esc(l.style||'')}</div>
+          <div class="card-cond">${esc(l.condition)}</div>
+        </div>
+        <div class="side-badge ${sc}">${l.side}</div>
+      </div>
+      <div class="card-body">
+        <div><div class="size-num">${esc(l.size)}</div><div class="size-label">US Size</div></div>
+        <div style="text-align:right">
+          <div style="font-size:.875rem;font-weight:500">@${esc(l.username)}</div>
+          <div style="font-size:.75rem;color:var(--mid-gray)">${fmtDate(l.created_at)}</div>
+        </div>
+      </div>
+      ${l.notes ? `<div class="card-notes">${esc(l.notes)}</div>` : ''}
+      <div class="card-footer">
+        <span class="looking-for">Needs: <strong>${opp}, size ${esc(l.size)}</strong></span>
+        <div style="display:flex;gap:.4rem;align-items:center">
+          ${isMine ? `<button class="delete-btn" onclick="deleteListing('${l.id}')">Remove</button><span class="my-label">Your listing</span>` : `<button class="contact-btn" onclick="openMsg(${listingJson})">Message</button>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterListings(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active','left-active','right-active'));
+  if (filter === 'all') btn.classList.add('active');
+  else if (filter === 'Left') btn.classList.add('left-active');
+  else btn.classList.add('right-active');
+  renderListings(filter);
+}
+
+function updateStats() {
+  document.getElementById('stat-listings').textContent = allListings.length;
+}
+
+async function deleteListing(id) {
+  if (!confirm('Remove this listing?')) return;
+  const { error } = await sb.from('listings').update({ active: false }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  showToast('Listing removed');
+}
+
+// ── LIST MODAL ────────────────────────────────────────────
+function openListModal() {
+  requireUser(() => {
+    document.getElementById('input-username').value = currentUser;
+    ['input-brand','input-style','input-notes'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('input-size').value = '';
+    document.getElementById('input-condition').selectedIndex = 0;
+    selectedSide = null;
+    document.getElementById('opt-left').className = 'side-option';
+    document.getElementById('opt-right').className = 'side-option';
+    document.getElementById('list-success').classList.remove('show');
+    document.getElementById('list-error').classList.remove('show');
+    document.getElementById('list-overlay').classList.add('open');
+  });
+}
+
+function selectSide(side) {
+  selectedSide = side;
+  document.getElementById('opt-left').className = 'side-option' + (side==='Left' ? ' selected-left':'');
+  document.getElementById('opt-right').className = 'side-option' + (side==='Right' ? ' selected-right':'');
+}
+
+async function submitListing() {
+  const username = document.getElementById('input-username').value.trim();
+  const brand = document.getElementById('input-brand').value.trim();
+  const style = document.getElementById('input-style').value.trim();
+  const size = document.getElementById('input-size').value;
+  const condition = document.getElementById('input-condition').value;
+  const notes = document.getElementById('input-notes').value.trim();
+  if (!username||!brand||!size||!selectedSide) {
+    showAlert('list-error','Please fill in username, brand, size, and select a shoe side.');
+    return;
+  }
+  const btn = document.getElementById('list-btn');
+  btn.textContent = 'Posting…'; btn.disabled = true;
+  const { error } = await sb.from('listings').insert([{ username, brand, style:style||'Shoe', size, side:selectedSide, condition, notes, active:true }]);
+  btn.textContent = 'Post Listing →'; btn.disabled = false;
+  if (error) { showAlert('list-error', error.message); return; }
+  document.getElementById('list-success').classList.add('show');
+  document.getElementById('list-error').classList.remove('show');
+  setTimeout(() => closeModal('list-overlay'), 2000);
+}
+
+// ── MESSAGES ──────────────────────────────────────────────
+function openMsg(listing) {
+  requireUser(() => {
+    activeListing = listing;
+    document.getElementById('msg-title').textContent = `Message @${listing.username}`;
+    document.getElementById('msg-sender').value = currentUser;
+    document.getElementById('msg-input').value = '';
+    document.getElementById('msg-info').innerHTML =
+      `<strong>${esc(listing.brand)} ${esc(listing.style||'')}</strong> &nbsp;·&nbsp; ${listing.side} shoe, size ${esc(listing.size)} &nbsp;·&nbsp; <span style="color:var(--mid-gray)">@${esc(listing.username)}</span>`;
+    document.getElementById('msg-thread').innerHTML = '<div class="no-msgs">Loading…</div>';
+    document.getElementById('msg-overlay').classList.add('open');
+    loadMsgs(listing.id);
+    subscribeMsgs(listing.id);
+  });
+}
+
+async function loadMsgs(lid) {
+  const { data } = await sb.from('messages').select('*').eq('listing_id', lid).order('created_at', { ascending: true });
+  renderMsgs(data || []);
+}
+
+function renderMsgs(msgs) {
+  const t = document.getElementById('msg-thread');
+  if (!msgs.length) { t.innerHTML = '<div class="no-msgs">No messages yet. Say hello!</div>'; return; }
+  t.innerHTML = msgs.map(m => {
+    const sent = m.sender === currentUser;
+    return `<div>
+      <div class="msg-bubble ${sent?'sent':'received'}">${esc(m.body)}</div>
+      <div class="msg-meta ${sent?'right':''}" style="color:var(--mid-gray)">@${esc(m.sender)} · ${fmtDate(m.created_at)}</div>
+    </div>`;
+  }).join('');
+  t.scrollTop = t.scrollHeight;
+}
+
+function subscribeMsgs(lid) {
+  if (msgChannel) sb.removeChannel(msgChannel);
+  msgChannel = sb.channel('msgs-'+lid)
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages', filter:`listing_id=eq.${lid}` }, p => {
+      const t = document.getElementById('msg-thread');
+      const noMsg = t.querySelector('.no-msgs');
+      if (noMsg) noMsg.remove();
+      const m = p.new, sent = m.sender === currentUser;
+      t.innerHTML += `<div>
+        <div class="msg-bubble ${sent?'sent':'received'}">${esc(m.body)}</div>
+        <div class="msg-meta ${sent?'right':''}" style="color:var(--mid-gray)">@${esc(m.sender)} · just now</div>
+      </div>`;
+      t.scrollTop = t.scrollHeight;
+    }).subscribe();
+}
+
+async function sendMessage() {
+  const body = document.getElementById('msg-input').value.trim();
+  const sender = document.getElementById('msg-sender').value.trim() || currentUser;
+  if (!body || !activeListing) return;
+  const { error } = await sb.from('messages').insert([{ listing_id: activeListing.id, sender, recipient: activeListing.username, body }]);
+  if (error) { showToast('Error: '+error.message); return; }
+  document.getElementById('msg-input').value = '';
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeOverlay(id, e) { if (e.target.id===id) closeModal(id); }
+function showAlert(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.classList.add('show'); }
+function scrollToBrowse() { document.getElementById('browse-section').scrollIntoView({behavior:'smooth'}); }
+function esc(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = (Date.now()-new Date(iso))/1000;
+  if (d<60) return 'just now';
+  if (d<3600) return Math.floor(d/60)+'m ago';
+  if (d<86400) return Math.floor(d/3600)+'h ago';
+  return Math.floor(d/86400)+'d ago';
+}
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+</script>
+</body>
+</html>
