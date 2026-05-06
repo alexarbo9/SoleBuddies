@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoleMates ✨ Shoe Trading for Amputees</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --sky: #d4eeff; --sky2: #b8e0ff; --bubblegum: #ffb3d1; --mint: #b8f0d8;
+  --lemon: #fff0a0; --lavender: #dbb8ff; --coral: #ff7f7f; --navy: #1a1a4e;
+  --ink: #2d2250; --white: #fffef8; --cream: #fffaee; --border: #1a1a4e;
+  --shadow: 4px 4px 0px #1a1a4e; --shadow-sm: 2px 2px 0px #1a1a4e; --shadow-lg: 6px 6px 0px #1a1a4e;
+  --left-bg: #ffe0b3; --right-bg: #b8f0d8; --left-accent: #ff8c00; --right-accent: #00a86b;
+}
+body { font-family: 'Nunito', sans-serif; background: var(--sky); background-image: radial-gradient(circle at 15% 20%, rgba(255,179,209,0.4) 0%, transparent 35%), radial-gradient(circle at 85% 10%, rgba(219,184,255,0.4) 0%, transparent 30%), radial-gradient(circle at 50% 80%, rgba(184,240,216,0.35) 0%, transparent 40%); min-height: 100vh; color: var(--ink); }
+.sparkles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+.spark { position: absolute; font-size: 1.1rem; animation: float-spark linear infinite; opacity: 0.5; }
+@keyframes float-spark { 0% { transform: translateY(100vh) rotate(0deg); opacity: 0; } 10% { opacity: 0.5; } 90% { opacity: 0.5; } 100% { transform: translateY(-60px) rotate(360deg); opacity: 0; } }
+
+/* NAV */
+nav { background: var(--navy); border-bottom: 3px solid var(--ink); padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; height: 62px; position: sticky; top: 0; z-index: 100; box-shadow: 0 3px 0 #0a0a2e; }
+.logo { font-family: 'Fredoka One', cursive; font-size: 1.7rem; color: var(--lemon); letter-spacing: 0.5px; text-shadow: 2px 2px 0 #ff7f7f, 4px 4px 0 rgba(0,0,0,0.2); display: flex; align-items: center; gap: 0.4rem; }
+.logo-shoe { font-size: 1.4rem; animation: rock 2s ease-in-out infinite; display: inline-block; }
+@keyframes rock { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+.nav-links { display: flex; gap: 0.4rem; list-style: none; align-items: center; }
+.nav-links button { background: none; border: 2px solid transparent; color: rgba(255,255,255,0.65); font-family: 'Nunito', sans-serif; font-size: 0.82rem; font-weight: 700; padding: 0.4rem 0.85rem; cursor: pointer; border-radius: 20px; transition: all 0.15s; }
+.nav-links button:hover { color: white; border-color: rgba(255,255,255,0.3); }
+.nav-cta { background: var(--bubblegum) !important; color: var(--navy) !important; border: 2px solid var(--navy) !important; box-shadow: var(--shadow-sm); font-weight: 800 !important; }
+.nav-cta:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--ink) !important; }
+
+/* USER BANNER */
+.user-banner { background: var(--lemon); border-bottom: 2px solid var(--navy); padding: 0.4rem 1.5rem; display: none; align-items: center; justify-content: flex-end; gap: 0.75rem; font-size: 0.82rem; font-weight: 700; color: var(--ink); }
+.user-banner button { background: none; border: none; color: var(--coral); cursor: pointer; font-family: 'Nunito', sans-serif; font-size: 0.8rem; font-weight: 800; text-decoration: underline; }
+
+/* HERO */
+.hero { position: relative; z-index: 1; padding: 4rem 2rem 3rem; text-align: center; overflow: hidden; }
+.hero-card { display: inline-block; background: var(--white); border: 3px solid var(--navy); border-radius: 24px; box-shadow: var(--shadow-lg); padding: 2.5rem 3rem; max-width: 620px; position: relative; }
+.hero-card::before { content: ''; position: absolute; inset: -3px; border-radius: 26px; background: linear-gradient(135deg, var(--bubblegum), var(--lavender), var(--mint)); z-index: -1; opacity: 0.5; }
+.hero-tag { display: inline-block; background: var(--lemon); border: 2px solid var(--navy); border-radius: 100px; font-size: 0.72rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 0.3rem 0.9rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm); color: var(--ink); }
+.hero h1 { font-family: 'Fredoka One', cursive; font-size: clamp(2rem, 5.5vw, 3.5rem); color: var(--navy); line-height: 1.1; margin-bottom: 1rem; letter-spacing: 0.5px; }
+.hero h1 .accent { color: var(--coral); }
+.hero h1 .accent2 { color: #8b5cf6; }
+.hero p { color: #5a5080; font-size: 1rem; line-height: 1.65; max-width: 420px; margin: 0 auto 2rem; }
+.hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.deco-star { position: absolute; font-size: 2rem; animation: spin-slow linear infinite; pointer-events: none; }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1.5rem; border-radius: 12px; font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 800; cursor: pointer; border: 2px solid var(--navy); transition: all 0.12s; box-shadow: var(--shadow); letter-spacing: 0.2px; }
+.btn:hover { transform: translate(-2px,-2px); box-shadow: var(--shadow-lg); }
+.btn:active { transform: translate(1px,1px); box-shadow: var(--shadow-sm); }
+.btn-primary { background: var(--coral); color: white; }
+.btn-secondary { background: var(--lavender); color: var(--navy); }
+.btn-ghost { background: var(--cream); color: var(--navy); }
+.btn-submit { background: var(--mint); color: var(--navy); }
+
+/* STATS */
+.stats { position: relative; z-index: 1; background: var(--navy); border-top: 3px solid var(--ink); border-bottom: 3px solid var(--ink); display: flex; justify-content: center; flex-wrap: wrap; }
+.stat { padding: 1rem 2.5rem; text-align: center; border-right: 2px solid rgba(255,255,255,0.15); }
+.stat:last-child { border-right: none; }
+.stat-num { font-family: 'Fredoka One', cursive; font-size: 1.8rem; color: var(--lemon); line-height: 1; }
+.stat-label { font-size: 0.7rem; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 0.15rem; font-weight: 700; }
+
+/* ABOUT SECTION */
+.about-section { position: relative; z-index: 1; background: var(--white); border-top: 3px solid var(--navy); border-bottom: 3px solid var(--navy); padding: 3rem 2rem; }
+.about-inner { max-width: 860px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
+.about-text {}
+.about-tag { display: inline-block; background: var(--bubblegum); border: 2px solid var(--navy); border-radius: 100px; font-size: 0.7rem; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 0.25rem 0.8rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm); }
+.about-title { font-family: 'Fredoka One', cursive; font-size: 1.9rem; color: var(--navy); line-height: 1.15; margin-bottom: 1rem; letter-spacing: 0.3px; }
+.about-title .accent { color: var(--coral); }
+.about-body { color: #5a5080; font-size: 0.95rem; line-height: 1.75; font-weight: 600; }
+.about-body p + p { margin-top: 0.85rem; }
+.about-cards { display: flex; flex-direction: column; gap: 0.85rem; }
+.about-card { background: var(--cream); border: 2px solid var(--navy); border-radius: 14px; padding: 1rem 1.1rem; box-shadow: var(--shadow-sm); display: flex; align-items: flex-start; gap: 0.85rem; }
+.about-card-icon { font-size: 1.6rem; flex-shrink: 0; margin-top: 0.1rem; }
+.about-card-title { font-family: 'Fredoka One', cursive; font-size: 0.95rem; color: var(--navy); margin-bottom: 0.2rem; }
+.about-card-text { font-size: 0.8rem; color: #6a5a8a; line-height: 1.5; font-weight: 600; }
+
+/* MAIN */
+.main-container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.section-title { font-family: 'Fredoka One', cursive; font-size: 1.7rem; color: var(--navy); letter-spacing: 0.3px; display: flex; align-items: center; gap: 0.4rem; }
+
+/* MATCHES BANNER */
+.matches-banner { background: var(--lemon); border: 3px solid var(--navy); border-radius: 16px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); display: none; align-items: center; gap: 0.75rem; }
+.matches-banner.show { display: flex; }
+.matches-banner-icon { font-size: 1.5rem; flex-shrink: 0; }
+.matches-banner-title { font-family: 'Fredoka One', cursive; color: var(--navy); font-size: 1rem; }
+.matches-banner p { color: #5a4a00; font-size: 0.82rem; font-weight: 600; margin-top: 0.1rem; }
+
+/* FILTERS */
+.filters { display: flex; gap: 0.6rem; margin-bottom: 1.75rem; flex-wrap: wrap; align-items: center; }
+.filter-label { font-size: 0.78rem; color: var(--ink); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+.filter-btn { padding: 0.35rem 1rem; border-radius: 100px; border: 2px solid var(--navy); background: var(--white); font-family: 'Nunito', sans-serif; font-size: 0.82rem; font-weight: 800; cursor: pointer; transition: all 0.12s; color: var(--ink); box-shadow: var(--shadow-sm); }
+.filter-btn:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--navy); }
+.filter-btn.active { background: var(--coral); color: white; }
+.filter-btn.left-active { background: var(--left-bg); color: var(--left-accent); }
+.filter-btn.right-active { background: var(--right-bg); color: var(--right-accent); }
+
+/* LISTINGS */
+.listings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1.25rem; }
+.listing-card { background: var(--white); border: 3px solid var(--navy); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); transition: transform 0.12s, box-shadow 0.12s; position: relative; }
+.listing-card:hover { transform: translate(-2px,-2px); box-shadow: var(--shadow-lg); }
+.match-glow { border-color: #f59e0b !important; background: #fffbeb !important; }
+.traded-card { opacity: 0.6; }
+.traded-banner-bar { background: var(--mint); border-bottom: 2px solid var(--navy); padding: 0.3rem 0.75rem; font-size: 0.72rem; font-weight: 800; color: var(--right-accent); text-align: center; letter-spacing: 0.5px; }
+.match-badge { position: absolute; top: 0.6rem; right: 0.6rem; background: var(--lemon); border: 2px solid var(--navy); color: var(--ink); font-size: 0.68rem; font-weight: 800; padding: 0.15rem 0.55rem; border-radius: 100px; box-shadow: var(--shadow-sm); letter-spacing: 0.5px; text-transform: uppercase; }
+.card-top { padding: 1rem 1rem 0.85rem; border-bottom: 2px solid var(--navy); display: flex; align-items: center; gap: 0.85rem; }
+.shoe-icon { width: 52px; height: 52px; border-radius: 12px; border: 2px solid var(--navy); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0; }
+.shoe-icon.left { background: var(--left-bg); }
+.shoe-icon.right { background: var(--right-bg); }
+.card-meta { flex: 1; min-width: 0; }
+.card-shoe-name { font-family: 'Fredoka One', cursive; font-size: 1rem; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-cond { font-size: 0.75rem; color: #7a6a9a; margin-top: 0.1rem; font-weight: 700; }
+.side-badge { display: inline-flex; align-items: center; padding: 0.2rem 0.65rem; border-radius: 100px; font-size: 0.72rem; font-weight: 800; border: 2px solid var(--navy); flex-shrink: 0; }
+.side-badge.left { background: var(--left-bg); color: var(--left-accent); }
+.side-badge.right { background: var(--right-bg); color: var(--right-accent); }
+.card-body { padding: 0.9rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+.size-num { font-family: 'Fredoka One', cursive; font-size: 2rem; color: var(--navy); line-height: 1; }
+.size-label { font-size: 0.65rem; color: #7a6a9a; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; }
+.card-location { font-size: 0.75rem; color: #7a6a9a; font-weight: 700; margin-top: 0.2rem; }
+.card-notes { padding: 0 1rem 0.75rem; font-size: 0.78rem; color: #6a5a8a; line-height: 1.5; font-weight: 600; }
+.card-footer { padding: 0.65rem 1rem; background: var(--cream); border-top: 2px solid var(--navy); display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.looking-for { font-size: 0.75rem; color: #6a5a8a; font-weight: 700; }
+.looking-for strong { color: var(--navy); }
+.contact-btn { padding: 0.35rem 0.85rem; background: var(--bubblegum); color: var(--navy); border: 2px solid var(--navy); border-radius: 8px; font-family: 'Nunito', sans-serif; font-size: 0.78rem; font-weight: 800; cursor: pointer; transition: all 0.12s; box-shadow: var(--shadow-sm); white-space: nowrap; }
+.contact-btn:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--navy); }
+.traded-btn { padding: 0.35rem 0.75rem; background: var(--mint); color: var(--navy); border: 2px solid var(--navy); border-radius: 8px; font-family: 'Nunito', sans-serif; font-size: 0.75rem; font-weight: 800; cursor: pointer; transition: all 0.12s; box-shadow: var(--shadow-sm); white-space: nowrap; }
+.traded-btn:hover { transform: translate(-1px,-1px); }
+.delete-btn { padding: 0.3rem 0.6rem; background: #ffe0e0; color: #c00; border: 2px solid #c00; border-radius: 7px; font-family: 'Nunito', sans-serif; font-size: 0.72rem; font-weight: 800; cursor: pointer; transition: all 0.12s; }
+.delete-btn:hover { background: #ffc0c0; }
+.my-label { font-size: 0.72rem; color: #9a8ab0; font-weight: 700; }
+.gender-badge { display: inline-block; font-size: 0.68rem; font-weight: 800; padding: 0.1rem 0.45rem; border-radius: 100px; border: 1.5px solid var(--navy); margin-left: 0.3rem; vertical-align: middle; }
+.gender-badge.mens { background: #dbeafe; color: #1d4ed8; }
+.gender-badge.womens { background: #fce7f3; color: #be185d; }
+.gender-badge.unisex { background: var(--lavender); color: #6b21a8; }
+
+/* LOADING / EMPTY */
+.loading-state { text-align: center; padding: 4rem 2rem; color: #7a6a9a; grid-column: 1/-1; }
+.spinner { width: 40px; height: 40px; border: 4px solid var(--lavender); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.75s linear infinite; margin: 0 auto 1rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { text-align: center; padding: 4rem 2rem; color: #7a6a9a; grid-column: 1/-1; }
+.empty-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+.empty-state p { font-weight: 700; font-size: 0.95rem; }
+
+/* HOW IT WORKS */
+.how-it-works { position: relative; z-index: 1; background: var(--navy); border-top: 3px solid var(--ink); padding: 3.5rem 2rem; margin-top: 3rem; }
+.hiw-inner { max-width: 900px; margin: 0 auto; }
+.hiw-title { font-family: 'Fredoka One', cursive; font-size: 2rem; color: var(--lemon); text-align: center; margin-bottom: 2.5rem; text-shadow: 2px 2px 0 rgba(255,127,127,0.5); }
+.hiw-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1.5rem; }
+.hiw-step { background: rgba(255,255,255,0.07); border: 2px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 1.5rem 1rem; text-align: center; transition: background 0.2s; }
+.hiw-step:hover { background: rgba(255,255,255,0.11); }
+.hiw-num { width: 42px; height: 42px; border-radius: 50%; background: var(--bubblegum); border: 2px solid var(--navy); box-shadow: 2px 2px 0 rgba(0,0,0,0.3); color: var(--navy); font-family: 'Fredoka One', cursive; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.85rem; }
+.hiw-step h3 { font-family: 'Fredoka One', cursive; font-size: 1.05rem; color: white; margin-bottom: 0.4rem; }
+.hiw-step p { font-size: 0.82rem; color: rgba(255,255,255,0.6); line-height: 1.6; font-weight: 600; }
+
+/* OVERLAYS & MODALS */
+.overlay { position: fixed; inset: 0; background: rgba(26,26,78,0.6); z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(3px); }
+.overlay.open { display: flex; }
+.modal { background: var(--white); border: 3px solid var(--navy); border-radius: 20px; width: 100%; max-width: 500px; overflow: hidden; animation: popIn 0.25s cubic-bezier(.34,1.56,.64,1); max-height: 92vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); }
+@keyframes popIn { from { transform: scale(0.88) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+.modal-header { background: var(--navy); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; border-bottom: 3px solid var(--ink); }
+.modal-title { font-family: 'Fredoka One', cursive; font-size: 1.2rem; color: var(--lemon); letter-spacing: 0.3px; }
+.modal-close { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.3); color: white; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; transition: background 0.15s; font-weight: 900; }
+.modal-close:hover { background: rgba(255,255,255,0.22); }
+.modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+.modal-footer { padding: 0 1.5rem 1.5rem; display: flex; gap: 0.75rem; flex-shrink: 0; }
+
+/* FORMS */
+.form-group { margin-bottom: 1.1rem; }
+label { display: block; font-size: 0.78rem; font-weight: 800; color: var(--navy); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.4rem; }
+input, select, textarea { width: 100%; padding: 0.65rem 0.9rem; border: 2px solid var(--navy); border-radius: 10px; font-family: 'Nunito', sans-serif; font-size: 0.92rem; font-weight: 600; color: var(--ink); background: var(--cream); outline: none; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow-sm); }
+input:focus, select:focus, textarea:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(255,127,127,0.2); }
+textarea { resize: vertical; min-height: 75px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.85rem; }
+.side-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.side-option { border: 3px solid var(--navy); border-radius: 14px; padding: 1rem; text-align: center; cursor: pointer; transition: all 0.15s; background: var(--cream); box-shadow: var(--shadow-sm); }
+.side-option:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--navy); }
+.side-option.selected-left { border-color: var(--left-accent); background: var(--left-bg); box-shadow: 3px 3px 0 var(--left-accent); }
+.side-option.selected-right { border-color: var(--right-accent); background: var(--right-bg); box-shadow: 3px 3px 0 var(--right-accent); }
+.side-option-icon { font-size: 1.8rem; margin-bottom: 0.25rem; }
+.side-option-text { font-size: 0.85rem; font-weight: 800; color: var(--navy); }
+.form-hint { font-size: 0.72rem; color: #9a8ab0; font-weight: 700; margin-top: 0.3rem; }
+.alert { padding: 0.8rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; display: none; border: 2px solid; }
+.alert.show { display: block; }
+.alert-success { background: var(--mint); border-color: var(--right-accent); color: #1a5c38; }
+.alert-error { background: #ffe0e0; border-color: #c00; color: #c00; }
+
+/* MESSAGES */
+.msg-modal { max-width: 520px; }
+.msg-listing-info { background: var(--sky); border: 2px solid var(--navy); border-radius: 10px; padding: 0.7rem 1rem; margin-bottom: 1rem; font-size: 0.83rem; font-weight: 700; }
+.msg-thread { display: flex; flex-direction: column; gap: 0.65rem; min-height: 130px; max-height: 240px; overflow-y: auto; padding: 0.5rem 0; margin-bottom: 0.85rem; }
+.msg-bubble { max-width: 80%; padding: 0.65rem 0.9rem; border-radius: 14px; border: 2px solid var(--navy); font-size: 0.87rem; line-height: 1.45; font-weight: 600; }
+.msg-bubble.sent { background: var(--bubblegum); align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg-bubble.received { background: var(--sky); align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg-meta { font-size: 0.68rem; opacity: 0.6; margin-top: 0.15rem; font-weight: 700; }
+.msg-meta.right { text-align: right; }
+.no-msgs { color: #9a8ab0; font-size: 0.85rem; text-align: center; padding: 2rem 0; font-style: italic; font-weight: 700; }
+.msg-compose { display: flex; gap: 0.5rem; }
+.msg-compose input { flex: 1; }
+.msg-send-btn { padding: 0.65rem 1rem; background: var(--bubblegum); color: var(--navy); border: 2px solid var(--navy); border-radius: 10px; cursor: pointer; font-family: 'Nunito', sans-serif; font-size: 0.88rem; font-weight: 800; white-space: nowrap; box-shadow: var(--shadow-sm); transition: all 0.12s; }
+.msg-send-btn:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--navy); }
+.msg-sender-row { margin-top: 0.6rem; }
+.msg-sender-row label { text-transform: none; letter-spacing: 0; font-size: 0.72rem; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--navy); color: var(--lemon); padding: 0.65rem 1.5rem; border-radius: 100px; font-size: 0.85rem; font-weight: 800; z-index: 999; transition: transform 0.3s cubic-bezier(.34,1.56,.64,1); white-space: nowrap; border: 2px solid rgba(255,255,255,0.2); box-shadow: var(--shadow-lg); }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* FOOTER */
+footer { position: relative; z-index: 1; background: var(--navy); border-top: 3px solid var(--ink); padding: 2rem; color: rgba(255,255,255,0.4); font-size: 0.8rem; font-weight: 700; }
+.footer-inner { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; }
+.footer-inner span { color: var(--bubblegum); }
+.footer-links { display: flex; gap: 1.5rem; margin-top: 0.25rem; }
+.footer-links a { color: rgba(255,255,255,0.4); font-size: 0.78rem; text-decoration: none; font-weight: 700; }
+.footer-links a:hover { color: var(--lemon); }
+
+@media (max-width: 700px) {
+  .stats { flex-wrap: wrap; }
+  .stat { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); width: 50%; }
+  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .hero-card { padding: 2rem 1.5rem; }
+  .about-inner { grid-template-columns: 1fr; gap: 2rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="sparkles" id="sparkles"></div>
+
+<nav>
+  <div class="logo"><span class="logo-shoe">👟</span> SoleMates</div>
+  <ul class="nav-links">
+    <li><button onclick="scrollToBrowse()">Browse</button></li>
+    <li><button onclick="scrollToAbout()">About</button></li>
+    <li><button class="nav-cta" onclick="openListModal()">✨ List a Shoe</button></li>
+  </ul>
+</nav>
+
+<div class="user-banner" id="user-banner">
+  👋 Hey, <strong id="banner-username"></strong>!
+  <button onclick="changeUser()">Switch user</button>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="deco-star" style="top:8%;left:6%;font-size:1.6rem;animation-duration:8s;">⭐</div>
+  <div class="deco-star" style="top:15%;right:8%;font-size:1.2rem;animation-duration:12s;">✨</div>
+  <div class="deco-star" style="bottom:12%;left:10%;font-size:1rem;animation-duration:10s;">💫</div>
+  <div class="deco-star" style="bottom:8%;right:6%;font-size:1.4rem;animation-duration:9s;">⭐</div>
+  <div class="hero-card">
+    <div class="hero-tag">🌟 A Community Built on Shared Steps</div>
+    <h1>Find the <span class="accent">other half</span><br>of your <span class="accent2">pair</span>.</h1>
+    <p>A free trading community for amputees to match unused shoes with someone who needs exactly the other one. No waste. Just people helping people. 💛</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary" onclick="scrollToBrowse()">Browse Listings 👀</button>
+      <button class="btn btn-secondary" onclick="openListModal()">List Your Shoe 👟</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="stat-num" id="stat-listings">—</div><div class="stat-label">Active Listings</div></div>
+  <div class="stat"><div class="stat-num" id="stat-matches">—</div><div class="stat-label">Matched Pairs</div></div>
+  <div class="stat"><div class="stat-num">💛 Free</div><div class="stat-label">Always &amp; Forever</div></div>
+</div>
+
+<!-- ABOUT -->
+<div class="about-section" id="about-section">
+  <div class="about-inner">
+    <div class="about-text">
+      <div class="about-tag">💛 Our Mission</div>
+      <h2 class="about-title">Every shoe deserves a <span class="accent">sole mate</span>.</h2>
+      <div class="about-body">
+        <p>When someone loses a leg, they're often left with a brand new, unworn shoe — the one for the foot they no longer have. It sits in a box. It's a small thing, but it stings.</p>
+        <p>SoleMates is a free community where amputees can list that unused shoe and find someone who lost the opposite leg — in the same size. A simple trade. Two people walk away with what they need.</p>
+        <p>No money changes hands. No middleman. Just a community taking care of each other. 💛</p>
+      </div>
+    </div>
+    <div class="about-cards">
+      <div class="about-card">
+        <div class="about-card-icon">🆓</div>
+        <div><div class="about-card-title">Always Free</div><div class="about-card-text">SoleMates will never charge for listings or messaging. This is a community, not a marketplace.</div></div>
+      </div>
+      <div class="about-card">
+        <div class="about-card-icon">🔒</div>
+        <div><div class="about-card-title">Simple & Private</div><div class="about-card-text">No account required. Just a username and your shoe size — that's all we need to get you matched.</div></div>
+      </div>
+      <div class="about-card">
+        <div class="about-card-icon">🌍</div>
+        <div><div class="about-card-title">Global Community</div><div class="about-card-text">Amputees across the world list shoes here. Filter by location to find someone nearby and save on shipping.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BROWSE -->
+<div class="main-container" id="browse-section">
+  <div class="section-header">
+    <h2 class="section-title">👟 Available Shoes</h2>
+    <button class="btn btn-primary" onclick="openListModal()" style="font-size:0.82rem;padding:0.55rem 1.1rem;">✨ List a Shoe</button>
+  </div>
+
+  <div class="matches-banner" id="matches-banner">
+    <div class="matches-banner-icon">🎉</div>
+    <div>
+      <div class="matches-banner-title">We found matches for your shoe!</div>
+      <p id="matches-banner-text"></p>
+    </div>
+  </div>
+
+  <div class="filters">
+    <span class="filter-label">Show:</span>
+    <button class="filter-btn active" onclick="filterListings('all', this)">All</button>
+    <button class="filter-btn" onclick="filterListings('Left', this)">Left 🟠</button>
+    <button class="filter-btn" onclick="filterListings('Right', this)">Right 🟢</button>
+    <button class="filter-btn" onclick="filterListings('available', this)">Available only</button>
+  </div>
+
+  <div class="listings-grid" id="listings-grid">
+    <div class="loading-state"><div class="spinner"></div><p>Loading listings…</p></div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="how-it-works">
+  <div class="hiw-inner">
+    <h2 class="hiw-title">✨ How SoleMates Works ✨</h2>
+    <div class="hiw-steps">
+      <div class="hiw-step"><div class="hiw-num">1</div><h3>List Your Shoe</h3><p>Add your shoe's brand, size, gender sizing, which foot, and your location. Takes 60 seconds.</p></div>
+      <div class="hiw-step"><div class="hiw-num">2</div><h3>Find a Match</h3><p>We highlight listings where someone has the opposite shoe in your exact size. ✨ = great match.</p></div>
+      <div class="hiw-step"><div class="hiw-num">3</div><h3>Message &amp; Trade</h3><p>Use the built-in messaging to connect and sort out the swap — no email needed.</p></div>
+      <div class="hiw-step"><div class="hiw-num">4</div><h3>Mark as Traded</h3><p>Once you've arranged your swap, mark the listing as traded so others know it's taken.</p></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>Made with <span>💛</span> for the amputee community &nbsp;·&nbsp; SoleMates is free, always.</div>
+    <div class="footer-links">
+      <a href="#" onclick="scrollToBrowse();return false;">Browse</a>
+      <a href="#" onclick="scrollToAbout();return false;">About</a>
+      <a href="#" onclick="openListModal();return false;">List a Shoe</a>
+    </div>
+  </div>
+</footer>
+
+<!-- USERNAME MODAL -->
+<div class="overlay open" id="username-overlay">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><span class="modal-title">Welcome to SoleMates 👟</span></div>
+    <div class="modal-body">
+      <p style="color:#5a5080;font-size:0.9rem;margin-bottom:1.25rem;line-height:1.6;font-weight:600">Choose a username to post listings and send messages. That's all we need!</p>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Pick a Username</label>
+        <input type="text" id="prompt-username" placeholder="e.g. trailrunner_mike" onkeydown="if(event.key==='Enter')saveUsername()" />
+      </div>
+      <div class="alert alert-error" id="username-error" style="margin-top:0.75rem;margin-bottom:0"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" style="flex:1" onclick="skipUsername()">Browse only</button>
+      <button class="btn btn-submit" style="flex:2" onclick="saveUsername()">Let's go! →</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIST SHOE MODAL -->
+<div class="overlay" id="list-overlay" onclick="closeOverlay('list-overlay',event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">List a Shoe ✨</span>
+      <button class="modal-close" onclick="closeModal('list-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-success" id="list-success">🎉 Your listing is live! Checking for matches…</div>
+      <div class="alert alert-error" id="list-error"></div>
+
+      <div class="form-group">
+        <label>Your Username</label>
+        <input type="text" id="input-username" placeholder="e.g. trailrunner_mike" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0"><label>Shoe Brand</label><input type="text" id="input-brand" placeholder="Nike, Brooks…" /></div>
+        <div class="form-group" style="margin-bottom:0"><label>Style / Model</label><input type="text" id="input-style" placeholder="Air Max 90…" /></div>
+      </div>
+
+      <div class="form-row" style="margin-top:1.1rem">
+        <div class="form-group" style="margin-bottom:0">
+          <label>US Shoe Size</label>
+          <select id="input-size">
+            <option value="">Select size</option>
+            <option>5</option><option>5.5</option><option>6</option><option>6.5</option>
+            <option>7</option><option>7.5</option><option>8</option><option>8.5</option>
+            <option>9</option><option>9.5</option><option>10</option><option>10.5</option>
+            <option>11</option><option>11.5</option><option>12</option><option>12.5</option>
+            <option>13</option><option>14</option><option>15</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Gender Sizing</label>
+          <select id="input-gender">
+            <option value="Mens">Men's</option>
+            <option value="Womens">Women's</option>
+            <option value="Unisex">Unisex / Kids</option>
+          </select>
+          <div class="form-hint">Men's 9 ≠ Women's 9!</div>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:1.1rem">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Country</label>
+          <select id="input-country" onchange="updateStateLabel()">
+            <option value="">Select…</option>
+            <option>USA</option><option>Canada</option><option>UK</option>
+            <option>Australia</option><option>New Zealand</option><option>Ireland</option>
+            <option>Germany</option><option>France</option><option>Netherlands</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label id="state-label">State / Province</label>
+          <input type="text" id="input-state" placeholder="e.g. California" />
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:1.1rem">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Condition</label>
+          <select id="input-condition">
+            <option>New / Never Worn</option><option>Like New</option><option>Good</option><option>Worn but solid</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:1.1rem">
+        <label>Shoe I Have Available</label>
+        <div class="side-selector">
+          <div class="side-option" id="opt-left" onclick="selectSide('Left')"><div class="side-option-icon">👟</div><div class="side-option-text">Left Shoe</div></div>
+          <div class="side-option" id="opt-right" onclick="selectSide('Right')"><div class="side-option-icon">👟</div><div class="side-option-text">Right Shoe</div></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="input-notes" placeholder="Color, width, shipping info…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('list-overlay')">Cancel</button>
+      <button class="btn btn-submit" style="flex:2" id="list-btn" onclick="submitListing()">Post Listing ✨</button>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGE MODAL -->
+<div class="overlay" id="msg-overlay" onclick="closeOverlay('msg-overlay',event)">
+  <div class="modal msg-modal">
+    <div class="modal-header">
+      <span class="modal-title" id="msg-title">💬 Message</span>
+      <button class="modal-close" onclick="closeModal('msg-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="msg-listing-info" id="msg-info"></div>
+      <div class="msg-thread" id="msg-thread"><div class="no-msgs">No messages yet. Say hello! 👋</div></div>
+      <div class="msg-compose">
+        <input type="text" id="msg-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMessage()" />
+        <button class="msg-send-btn" onclick="sendMessage()">Send →</button>
+      </div>
+      <div class="msg-sender-row">
+        <label>Sending as:</label>
+        <input type="text" id="msg-sender" placeholder="Your username" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('msg-overlay')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://omgdcelfbddwigozhdoc.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tZ2RjZWxmYmRkd2lnb3poZG9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjEzMTEsImV4cCI6MjA5MzU5NzMxMX0.Gq7h5uxCuHWjud5V4BCcXGQdnrI7PNcxS5ohSggu6sw';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = localStorage.getItem('sm_user') || null;
+let allListings = [];
+let currentFilter = 'all';
+let activeListing = null;
+let selectedSide = null;
+let msgChannel = null;
+let afterLogin = null;
+
+// ── SPARKLES ──────────────────────────────────────────────
+(function(){
+  const c = document.getElementById('sparkles');
+  const emojis = ['✨','⭐','💫','🌟','👟','💛','🎉'];
+  for(let i=0;i<18;i++){
+    const s=document.createElement('div');
+    s.className='spark';
+    s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    s.style.left=Math.random()*100+'%';
+    s.style.animationDuration=(8+Math.random()*14)+'s';
+    s.style.animationDelay=(-Math.random()*15)+'s';
+    s.style.fontSize=(0.7+Math.random()*0.8)+'rem';
+    c.appendChild(s);
+  }
+})();
+
+// ── INIT ──────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if(currentUser){ closeModal('username-overlay'); updateBanner(); }
+  loadListings();
+  subscribeListings();
+});
+
+// ── USER ──────────────────────────────────────────────────
+function updateBanner(){
+  const b=document.getElementById('user-banner');
+  if(currentUser){ b.style.display='flex'; document.getElementById('banner-username').textContent=currentUser; }
+  else b.style.display='none';
+}
+function saveUsername(){
+  const v=document.getElementById('prompt-username').value.trim();
+  if(v.length<2){ showAlert('username-error','At least 2 characters please!'); return; }
+  if(!/^[a-zA-Z0-9_]+$/.test(v)){ showAlert('username-error','Letters, numbers, underscores only.'); return; }
+  currentUser=v; localStorage.setItem('sm_user',v); updateBanner(); closeModal('username-overlay');
+  if(afterLogin){ afterLogin(); afterLogin=null; }
+}
+function skipUsername(){ closeModal('username-overlay'); }
+function changeUser(){ localStorage.removeItem('sm_user'); currentUser=null; updateBanner(); showToast('Switched to browse-only mode'); }
+function requireUser(cb){ if(currentUser){ cb(); return; } afterLogin=cb; document.getElementById('prompt-username').value=''; document.getElementById('username-error').classList.remove('show'); document.getElementById('username-overlay').classList.add('open'); }
+
+// ── LISTINGS ──────────────────────────────────────────────
+async function loadListings(){
+  try {
+    const { data, error } = await sb.from('listings').select('*').eq('active',true).order('created_at',{ascending:false});
+    if(error) throw error;
+    allListings = data||[];
+    renderListings(currentFilter);
+    updateStats();
+    checkMatches();
+  } catch(e) {
+    document.getElementById('listings-grid').innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><p>Couldn't load listings.<br><small style="color:#9a8ab0">${e.message}</small></p></div>`;
+  }
+}
+function subscribeListings(){
+  sb.channel('listings-rt').on('postgres_changes',{event:'*',schema:'public',table:'listings'},()=>loadListings()).subscribe();
+}
+function getMatchIds(){
+  const ids=new Set(); if(!currentUser) return ids;
+  const mine=allListings.filter(l=>l.username===currentUser);
+  const others=allListings.filter(l=>l.username!==currentUser);
+  mine.forEach(m=>{ const opp=m.side==='Left'?'Right':'Left'; others.forEach(o=>{ if(o.side===opp && o.size===m.size && o.gender===m.gender) ids.add(o.id); }); });
+  return ids;
+}
+function checkMatches(){
+  const ids=getMatchIds();
+  document.getElementById('stat-matches').textContent=ids.size||'0';
+  const banner=document.getElementById('matches-banner');
+  if(ids.size>0){ banner.classList.add('show'); document.getElementById('matches-banner-text').textContent=`${ids.size} listing${ids.size>1?' match':'s match'} your shoe — highlighted below!`; }
+  else banner.classList.remove('show');
+}
+function renderListings(filter){
+  const grid=document.getElementById('listings-grid');
+  let list = filter==='available' ? allListings.filter(l=>!l.traded) :
+             filter==='all'       ? allListings :
+                                    allListings.filter(l=>l.side===filter);
+  if(!list.length){ grid.innerHTML=`<div class="empty-state"><div class="empty-icon">👟</div><p>No listings yet — be the first!</p></div>`; return; }
+  const matchIds=getMatchIds();
+  grid.innerHTML=list.map(l=>{
+    const sc=l.side==='Left'?'left':'right';
+    const opp=l.side==='Left'?'Right':'Left';
+    const isMatch=matchIds.has(l.id);
+    const isMine=currentUser&&l.username===currentUser;
+    const lj=JSON.stringify(l).replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+    const gLabel=l.gender==='Mens'?"Men's":l.gender==='Womens'?"Women's":'Unisex';
+    const gClass=l.gender==='Mens'?'mens':l.gender==='Womens'?'womens':'unisex';
+    const loc=l.state&&l.country?`${l.state}, ${l.country}`:l.country||'';
+    return `<div class="listing-card ${isMatch?'match-glow':''} ${l.traded?'traded-card':''}">
+      ${l.traded?'<div class="traded-banner-bar">✅ Already Traded</div>':''}
+      ${isMatch&&!l.traded?'<div class="match-badge">✨ Match!</div>':''}
+      <div class="card-top">
+        <div class="shoe-icon ${sc}">👟</div>
+        <div class="card-meta">
+          <div class="card-shoe-name">${esc(l.brand)} ${esc(l.style||'')} <span class="gender-badge ${gClass}">${gLabel}</span></div>
+          <div class="card-cond">${esc(l.condition)}</div>
+        </div>
+        <div class="side-badge ${sc}">${l.side}</div>
+      </div>
+      <div class="card-body">
+        <div><div class="size-num">${esc(l.size)}</div><div class="size-label">US Size</div>${loc?`<div class="card-location">📍 ${esc(loc)}</div>`:''}</div>
+        <div style="text-align:right">
+          <div style="font-size:.85rem;font-weight:800;color:var(--navy)">@${esc(l.username)}</div>
+          <div style="font-size:.72rem;color:#9a8ab0;font-weight:700">${fmtDate(l.created_at)}</div>
+        </div>
+      </div>
+      ${l.notes?`<div class="card-notes">${esc(l.notes)}</div>`:''}
+      <div class="card-footer">
+        <span class="looking-for">Needs: <strong>${opp} ${gLabel}, sz ${esc(l.size)}</strong></span>
+        <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+          ${isMine?`
+            ${!l.traded?`<button class="traded-btn" onclick="markTraded('${l.id}')">✅ Mark Traded</button>`:''}
+            <button class="delete-btn" onclick="deleteListing('${l.id}')">Remove</button>
+            <span class="my-label">yours!</span>
+          `:`<button class="contact-btn" ${l.traded?'disabled style="opacity:0.5;cursor:default"':''} onclick="${l.traded?'':'openMsg('+lj+')'}">💬 ${l.traded?'Traded':'Message'}</button>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function filterListings(filter,btn){
+  currentFilter=filter;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active','left-active','right-active'));
+  if(filter==='all'||filter==='available') btn.classList.add('active');
+  else if(filter==='Left') btn.classList.add('left-active');
+  else btn.classList.add('right-active');
+  renderListings(filter);
+}
+function updateStats(){ document.getElementById('stat-listings').textContent=allListings.filter(l=>!l.traded).length; }
+async function deleteListing(id){
+  if(!confirm('Remove this listing?')) return;
+  const {error}=await sb.from('listings').update({active:false}).eq('id',id);
+  if(error){ showToast('Error: '+error.message); return; }
+  showToast('Listing removed!');
+}
+async function markTraded(id){
+  if(!confirm('Mark this listing as traded? It will show as taken to others.')) return;
+  const {error}=await sb.from('listings').update({traded:true}).eq('id',id);
+  if(error){ showToast('Error: '+error.message); return; }
+  showToast('🎉 Marked as traded! Congrats on the match!');
+}
+
+// ── LIST MODAL ────────────────────────────────────────────
+function openListModal(){
+  requireUser(()=>{
+    document.getElementById('input-username').value=currentUser;
+    ['input-brand','input-style','input-notes','input-state'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('input-size').value='';
+    document.getElementById('input-gender').value='Mens';
+    document.getElementById('input-country').value='';
+    document.getElementById('input-condition').selectedIndex=0;
+    selectedSide=null;
+    document.getElementById('opt-left').className='side-option';
+    document.getElementById('opt-right').className='side-option';
+    document.getElementById('list-success').classList.remove('show');
+    document.getElementById('list-error').classList.remove('show');
+    document.getElementById('list-overlay').classList.add('open');
+  });
+}
+function selectSide(side){
+  selectedSide=side;
+  document.getElementById('opt-left').className='side-option'+(side==='Left'?' selected-left':'');
+  document.getElementById('opt-right').className='side-option'+(side==='Right'?' selected-right':'');
+}
+function updateStateLabel(){
+  const country=document.getElementById('input-country').value;
+  const label=document.getElementById('state-label');
+  label.textContent=country==='Canada'?'Province':country==='UK'?'Region':'State / Province';
+}
+async function submitListing(){
+  const username=document.getElementById('input-username').value.trim();
+  const brand=document.getElementById('input-brand').value.trim();
+  const style=document.getElementById('input-style').value.trim();
+  const size=document.getElementById('input-size').value;
+  const gender=document.getElementById('input-gender').value;
+  const country=document.getElementById('input-country').value;
+  const state=document.getElementById('input-state').value.trim();
+  const condition=document.getElementById('input-condition').value;
+  const notes=document.getElementById('input-notes').value.trim();
+  if(!username||!brand||!size||!selectedSide){ showAlert('list-error','Please fill in username, brand, size, and pick a shoe side!'); return; }
+  const btn=document.getElementById('list-btn');
+  btn.textContent='Posting…'; btn.disabled=true;
+  const {error}=await sb.from('listings').insert([{username,brand,style:style||'Shoe',size,gender,side:selectedSide,condition,country,state,notes,active:true,traded:false}]);
+  btn.textContent='Post Listing ✨'; btn.disabled=false;
+  if(error){ showAlert('list-error',error.message); return; }
+  document.getElementById('list-success').classList.add('show');
+  document.getElementById('list-error').classList.remove('show');
+  setTimeout(()=>closeModal('list-overlay'),2000);
+}
+
+// ── MESSAGES ──────────────────────────────────────────────
+function openMsg(listing){
+  requireUser(()=>{
+    activeListing=listing;
+    document.getElementById('msg-title').textContent=`💬 Message @${listing.username}`;
+    document.getElementById('msg-sender').value=currentUser;
+    document.getElementById('msg-input').value='';
+    const gLabel=listing.gender==='Mens'?"Men's":listing.gender==='Womens'?"Women's":'Unisex';
+    document.getElementById('msg-info').innerHTML=`<strong>${esc(listing.brand)} ${esc(listing.style||'')}</strong> · ${listing.side} ${gLabel}, size ${esc(listing.size)}${listing.country?' · 📍'+esc(listing.country):''} · <span style="color:#7a6a9a">@${esc(listing.username)}</span>`;
+    document.getElementById('msg-thread').innerHTML='<div class="no-msgs">Loading… 💫</div>';
+    document.getElementById('msg-overlay').classList.add('open');
+    loadMsgs(listing.id); subscribeMsgs(listing.id);
+  });
+}
+async function loadMsgs(lid){ const {data}=await sb.from('messages').select('*').eq('listing_id',lid).order('created_at',{ascending:true}); renderMsgs(data||[]); }
+function renderMsgs(msgs){
+  const t=document.getElementById('msg-thread');
+  if(!msgs.length){ t.innerHTML='<div class="no-msgs">No messages yet. Say hello! 👋</div>'; return; }
+  t.innerHTML=msgs.map(m=>{ const sent=m.sender===currentUser; return `<div><div class="msg-bubble ${sent?'sent':'received'}">${esc(m.body)}</div><div class="msg-meta ${sent?'right':''}">@${esc(m.sender)} · ${fmtDate(m.created_at)}</div></div>`; }).join('');
+  t.scrollTop=t.scrollHeight;
+}
+function subscribeMsgs(lid){
+  if(msgChannel) sb.removeChannel(msgChannel);
+  msgChannel=sb.channel('msgs-'+lid).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:`listing_id=eq.${lid}`},p=>{
+    const t=document.getElementById('msg-thread');
+    const noMsg=t.querySelector('.no-msgs'); if(noMsg) noMsg.remove();
+    const m=p.new, sent=m.sender===currentUser;
+    t.innerHTML+=`<div><div class="msg-bubble ${sent?'sent':'received'}">${esc(m.body)}</div><div class="msg-meta ${sent?'right':''}">@${esc(m.sender)} · just now</div></div>`;
+    t.scrollTop=t.scrollHeight;
+  }).subscribe();
+}
+async function sendMessage(){
+  const body=document.getElementById('msg-input').value.trim();
+  const sender=document.getElementById('msg-sender').value.trim()||currentUser;
+  if(!body||!activeListing) return;
+  const {error}=await sb.from('messages').insert([{listing_id:activeListing.id,sender,recipient:activeListing.username,body}]);
+  if(error){ showToast('Error: '+error.message); return; }
+  document.getElementById('msg-input').value='';
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function closeOverlay(id,e){ if(e.target.id===id) closeModal(id); }
+function showAlert(id,msg){ const el=document.getElementById(id); el.textContent=msg; el.classList.add('show'); }
+function scrollToBrowse(){ document.getElementById('browse-section').scrollIntoView({behavior:'smooth'}); }
+function scrollToAbout(){ document.getElementById('about-section').scrollIntoView({behavior:'smooth'}); }
+function esc(s){ return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''; }
+function fmtDate(iso){
+  if(!iso) return '';
+  const d=(Date.now()-new Date(iso))/1000;
+  if(d<60) return 'just now'; if(d<3600) return Math.floor(d/60)+'m ago';
+  if(d<86400) return Math.floor(d/3600)+'h ago'; return Math.floor(d/86400)+'d ago';
+}
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+</script>
+</body>
+</html>
