@@ -2,7 +2,7 @@
 -- SOLEMATES — Update 4: Shipping, Security, System Messages
 -- Run in Supabase → SQL Editor → New Query → Run
 -- Requires: listings + messages from solemates-setup 3.sql first
--- Safe to re-run (idempotent realtime + IF NOT EXISTS)
+-- Safe to re-run (idempotent realtime + policy drops + IF NOT EXISTS)
 -- =============================================
 
 -- Base tables first (profiles must exist before we alter it below)
@@ -111,11 +111,13 @@ create policy "Authenticated users can update trades"
 
 -- RLS: Listings (tighten — only owner can update/delete)
 drop policy if exists "Owner can deactivate listing" on listings;
+drop policy if exists "Owner can update own listing" on listings;
 create policy "Owner can update own listing"
   on listings for update using (auth.uid() = user_id);
 
 -- RLS: Messages (tighten — only authenticated users can send)
 drop policy if exists "Anyone can send a message" on messages;
+drop policy if exists "Authenticated users can send messages" on messages;
 create policy "Authenticated users can send messages"
   on messages for insert with check (auth.role() = 'authenticated');
 
