@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SoleBuddies ✨ Shoe Trading for Amputees</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -578,8 +578,11 @@ footer { position:relative; z-index:1; background:var(--navy); border-top:3px so
 
 <script>
 const SUPABASE_URL = 'https://omgdcelfbddwigozhdoc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tZ2RjZWxmYmRkd2lnb3poZG9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjEzMTEsImV4cCI6MjA5MzU5NzMxMX0.Gq7h5uxCuHWjud5V4BCcXGQdnrI7PNcxS5ohSggu6sw';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Publishable (dashboard: Settings → API Keys). Safe in static sites; rotate anytime.
+const SUPABASE_KEY = 'sb_publishable_pWZDusJEEQjgMCGU4K4-jA_KfoTnXWx';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, detectSessionInUrl: true }
+});
 
 let currentUser = null;
 let currentProfile = null;
