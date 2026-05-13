@@ -576,11 +576,20 @@ footer { position:relative; z-index:1; background:var(--navy); border-top:3px so
 
 <div class="toast" id="toast"></div>
 
+<script src="supabase-config.js"></script>
 <script>
-const SUPABASE_URL = 'https://omgdcelfbddwigozhdoc.supabase.co';
-// Publishable (dashboard: Settings → API Keys). Safe in static sites; rotate anytime.
-const SUPABASE_KEY = 'sb_publishable_pWZDusJEEQjgMCGU4K4-jA_KfoTnXWx';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+const _sbCfg = window.__SOLEBUDDIES_SUPABASE;
+if (!_sbCfg || !_sbCfg.url || !_sbCfg.key) {
+  document.body.innerHTML =
+    '<div style="font:600 15px system-ui,sans-serif;max-width:28rem;margin:3rem auto;padding:0 1.5rem;line-height:1.6;color:#222">' +
+    '<h1 style="font-size:1.25rem">SoleBuddies needs Supabase config</h1>' +
+    '<p>Create <code style="background:#eee;padding:.1rem .3rem;border-radius:4px">supabase-config.js</code> next to <code style="background:#eee;padding:.1rem .3rem;border-radius:4px">index.html</code>.</p>' +
+    '<ol style="margin:1rem 0;padding-left:1.25rem"><li>Copy <strong>supabase-config.example.js</strong> → <strong>supabase-config.js</strong></li>' +
+    '<li>Fill <code style="background:#eee;padding:.1rem .3rem;border-radius:4px">url</code> and publishable <code style="background:#eee;padding:.1rem .3rem;border-radius:4px">key</code> from Supabase → Settings → API Keys.</li>' +
+    '<li>For GitHub Pages, add repo secrets <code style="background:#eee;padding:.1rem .3rem;border-radius:4px">SUPABASE_URL</code> and <code style="background:#eee;padding:.1rem .3rem;border-radius:4px">SUPABASE_PUBLISHABLE_KEY</code> and deploy with Actions.</li></ol></div>';
+  throw new Error('Missing SoleBuddies Supabase configuration');
+}
+const sb = supabase.createClient(_sbCfg.url, _sbCfg.key, {
   auth: { persistSession: true, detectSessionInUrl: true }
 });
 
