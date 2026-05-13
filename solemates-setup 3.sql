@@ -34,9 +34,22 @@ create index if not exists idx_listings_side_size on listings(side, size);
 create index if not exists idx_listings_username  on listings(username);
 create index if not exists idx_messages_listing   on messages(listing_id);
 
--- 4. ENABLE REALTIME (so listings + messages update live)
-alter publication supabase_realtime add table listings;
-alter publication supabase_realtime add table messages;
+-- 4. ENABLE REALTIME (so listings + messages update live) — idempotent
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'listings'
+  ) then
+    alter publication supabase_realtime add table public.listings;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;
 
 -- 5. ROW LEVEL SECURITY — open read, anyone can post
 alter table listings enable row level security;
