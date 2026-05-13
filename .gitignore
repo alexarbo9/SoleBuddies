@@ -1,0 +1,2 @@
+# Runtime Supabase config (copy supabase-config.example.js → here for local preview)
+supabase-config.js
