@@ -1173,12 +1173,30 @@ async function saveEditedListingPhotos() {
 // ── LISTINGS ──────────────────────────────────────────────
 async function loadListings() {
   try {
-    const { data, error } = await sb.from('listings')
-      .select('*, profiles(username,trade_count,badges)')
-      .eq('active',true)
-      .order('created_at',{ascending:false});
+    // Two queries: PostgREST only auto-embeds when there is an FK listings→profiles.
+    // Schema has listings.user_id → auth.users, not profiles, so select('*,profiles()') 400s.
+    const { data: rows, error } = await sb.from('listings')
+      .select('*')
+      .eq('active', true)
+      .order('created_at', { ascending: false });
     if (error) throw error;
-    allListings = data||[];
+    const raw = rows || [];
+    const userIds = [...new Set(raw.map((l) => l.user_id).filter(Boolean))];
+    let profileById = {};
+    if (userIds.length) {
+      const { data: profs, error: pErr } = await sb
+        .from('profiles')
+        .select('id, username, trade_count, badges')
+        .in('id', userIds);
+      if (pErr) throw pErr;
+      (profs || []).forEach((p) => {
+        profileById[p.id] = p;
+      });
+    }
+    allListings = raw.map((l) => ({
+      ...l,
+      profiles: l.user_id ? profileById[l.user_id] || {} : {}
+    }));
     renderListings(currentFilter);
     updateStats();
     checkMatches();
