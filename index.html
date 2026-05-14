@@ -557,6 +557,34 @@ footer { position:relative; z-index:1; background:var(--navy); border-top:3px so
   </div>
 </div>
 
+<!-- ── EDIT LISTING PHOTOS (owners only) ─────────────────── -->
+<div class="overlay" id="edit-photos-overlay" onclick="closeOverlay('edit-photos-overlay',event)">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <span class="modal-title">📷 Listing Photos</span>
+      <button class="modal-close" onclick="closeModal('edit-photos-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error" id="edit-photos-error"></div>
+      <div id="edit-photos-current" style="margin-bottom:1rem"></div>
+      <div class="form-group">
+        <label>Replace photos <span style="font-size:0.72rem;font-weight:700;color:var(--mid-gray);text-transform:none;letter-spacing:0">(optional · max 3 · JPG/WebP)</span></label>
+        <input type="file" id="input-edit-listing-photos" accept="image/jpeg,image/webp,.jpg,.jpeg,.webp" multiple onchange="onEditListingPhotosChange(event)" />
+        <div class="listing-photo-preview" id="edit-photo-preview" aria-live="polite"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:0.45rem;text-transform:none;letter-spacing:normal;cursor:pointer;font-size:0.88rem;color:var(--ink)">
+        <input type="checkbox" id="edit-photos-clear" style="width:auto;box-shadow:none" onchange="if(this.checked)clearEditListingPhotoStaging();" />
+        Remove all photos from this listing
+      </label>
+      <p style="font-size:0.75rem;color:var(--mid-gray);margin-top:0.85rem;line-height:1.45;font-weight:600">Save uploads new pics and deletes old files. Remove-all clears images only — listing stays active.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('edit-photos-overlay')">Cancel</button>
+      <button class="btn btn-submit" style="flex:2" id="edit-photos-save-btn" onclick="saveEditedListingPhotos()">Save 📷</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── MESSAGE + TRADE MODAL ─────────────────────────────── -->
 <div class="overlay" id="msg-overlay" onclick="closeOverlay('msg-overlay',event)">
   <div class="modal msg-modal">
@@ -643,6 +671,8 @@ const MAX_LISTING_PHOTOS = 3;
 const MAX_LISTING_PHOTO_BYTES = 2 * 1024 * 1024;
 const LISTING_IMG_MAX_EDGE = 1600;
 let listingStagingBlobs = []; // { blob, previewUrl }
+let editPhotosListingId = null;
+let editListingPhotoBlobs = []; // { blob, previewUrl }
 
 // ── SECURITY HELPERS ──────────────────────────────────────
 // Escape HTML to prevent XSS
@@ -1003,6 +1033,143 @@ window.closePhotoLightbox = function (ev) {
   img.removeAttribute('src');
 };
 
+function clearEditListingPhotoStaging() {
+  editListingPhotoBlobs.forEach((x) => { try { URL.revokeObjectURL(x.previewUrl); } catch(_){} });
+  editListingPhotoBlobs = [];
+  const prev = document.getElementById('edit-photo-preview');
+  if (prev) prev.innerHTML = '';
+  const inp = document.getElementById('input-edit-listing-photos');
+  if (inp) inp.value = '';
+}
+
+function renderEditPhotoPreview() {
+  const prev = document.getElementById('edit-photo-preview');
+  if (!prev) return;
+  prev.innerHTML = editListingPhotoBlobs.map((slot, idx) =>
+    `<div class="listing-photo-preview-thumb">
+      <img src="${slot.previewUrl}" alt="" />
+      <button type="button" class="listing-photo-remove" onclick="removeEditListingStagingAt(${idx})" aria-label="Remove photo">✕</button>
+    </div>`
+  ).join('');
+}
+
+window.removeEditListingStagingAt = function (idx) {
+  const x = editListingPhotoBlobs.splice(idx, 1)[0];
+  if (x) try { URL.revokeObjectURL(x.previewUrl); } catch(_){}
+  renderEditPhotoPreview();
+};
+
+window.onEditListingPhotosChange = async function (ev) {
+  const input = ev.target;
+  document.getElementById('edit-photos-error').classList.remove('show');
+  document.getElementById('edit-photos-clear').checked = false;
+  const picked = Array.from(input.files || []);
+  clearEditListingPhotoStaging();
+  input.value = '';
+  if (!picked.length) {
+    renderEditPhotoPreview();
+    return;
+  }
+  const todo = picked.slice(0, MAX_LISTING_PHOTOS);
+  if (picked.length > MAX_LISTING_PHOTOS) {
+    showToast(`Using first ${MAX_LISTING_PHOTOS} photos.`);
+  }
+  for (const raw of todo) {
+    try {
+      const blob = await prepareListingPhotoBlob(raw);
+      editListingPhotoBlobs.push({ blob, previewUrl: URL.createObjectURL(blob) });
+    } catch (err) {
+      clearEditListingPhotoStaging();
+      document.getElementById('edit-photos-error').textContent = err.message || String(err);
+      document.getElementById('edit-photos-error').classList.add('show');
+      return;
+    }
+  }
+  renderEditPhotoPreview();
+};
+
+window.openEditListingPhotos = function (listingIdRaw) {
+  requireAuth(async ()=>{
+    const l = allListings.find((x) => String(x.id) === String(listingIdRaw));
+    if (!l || !currentUser || l.user_id !== currentUser.id || l.traded) return;
+    editPhotosListingId = l.id;
+    clearEditListingPhotoStaging();
+    document.getElementById('edit-photos-clear').checked = false;
+    document.getElementById('edit-photos-error').classList.remove('show');
+    document.getElementById('edit-photos-error').textContent = '';
+    const cur = Array.isArray(l.photo_urls) ? l.photo_urls : [];
+    const curEl = document.getElementById('edit-photos-current');
+    curEl.innerHTML = cur.length
+      ? `<p style="font-size:0.78rem;font-weight:800;color:var(--navy);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:1px">Current</p><div style="display:flex;flex-wrap:wrap;gap:6px">` +
+          cur.map((pth) => {
+            const u = listingPhotoPublicUrl(pth);
+            return `<button type="button" class="listing-thumb" onclick="openPhotoLightbox(${JSON.stringify(u)})" aria-label="View current photo"><img loading="lazy" src="${esc(u)}" alt="" /></button>`;
+          }).join('') +
+        `</div>`
+      : `<p style="font-size:0.85rem;color:var(--mid-gray);font-weight:700;line-height:1.5;margin:0">No photos on this listing yet — add replacements below.</p>`;
+    document.getElementById('edit-photos-overlay').classList.add('open');
+  });
+};
+
+async function saveEditedListingPhotos() {
+  const id = editPhotosListingId;
+  const clearAll = document.getElementById('edit-photos-clear').checked;
+  const newBlobs = editListingPhotoBlobs.map((s) => s.blob);
+  if (!clearAll && newBlobs.length === 0) {
+    closeModal('edit-photos-overlay');
+    editPhotosListingId = null;
+    return;
+  }
+  const listing = allListings.find((x) => String(x.id) === String(id));
+  if (!listing || listing.user_id !== currentUser?.id || listing.traded) return;
+  const oldPaths = (Array.isArray(listing.photo_urls) ? listing.photo_urls : []).filter(Boolean);
+
+  const btn = document.getElementById('edit-photos-save-btn');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  document.getElementById('edit-photos-error').classList.remove('show');
+
+  try {
+    if (clearAll) {
+      clearEditListingPhotoStaging();
+      document.getElementById('edit-photos-clear').checked = false;
+      if (oldPaths.length) {
+        await sb.storage.from(STORAGE_BUCKET).remove(oldPaths);
+      }
+      const { error } = await sb.from('listings').update({ photo_urls: [] }).eq('id', id).eq('user_id', currentUser.id);
+      if (error) throw new Error(error.message);
+      showToast('Photos removed 📷');
+    } else {
+      const uploadId = crypto.randomUUID();
+      const paths = [];
+      for (let i = 0; i < newBlobs.length; i++) {
+        const path = `${currentUser.id}/${uploadId}_${i}.jpg`;
+        const { error: ue } = await sb.storage.from(STORAGE_BUCKET).upload(path, newBlobs[i], {
+          contentType: 'image/jpeg',
+          cacheControl: '86400'
+        });
+        if (ue) throw new Error(ue.message);
+        paths.push(path);
+      }
+      if (oldPaths.length) await sb.storage.from(STORAGE_BUCKET).remove(oldPaths);
+      const { error } = await sb.from('listings').update({ photo_urls: paths }).eq('id', id).eq('user_id', currentUser.id);
+      if (error) {
+        if (paths.length) await sb.storage.from(STORAGE_BUCKET).remove(paths).catch(()=>{});
+        throw new Error(error.message);
+      }
+      showToast('Photos updated! ✨');
+    }
+    clearEditListingPhotoStaging();
+    editPhotosListingId = null;
+    closeModal('edit-photos-overlay');
+    await loadListings();
+  } catch (e) {
+    document.getElementById('edit-photos-error').textContent = e.message || String(e);
+    document.getElementById('edit-photos-error').classList.add('show');
+  } finally {
+    btn.textContent = 'Save 📷'; btn.disabled = false;
+  }
+}
+
 // ── LISTINGS ──────────────────────────────────────────────
 async function loadListings() {
   try {
@@ -1100,7 +1267,10 @@ function renderListings(filter) {
         <span class="looking-for">Needs other shoe: <strong>${opp}, ${esc(l.size)} (${gLabel})</strong></span>
         <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
           ${isMine
-            ? `${!l.traded?`<button class="btn btn-sm btn-submit" onclick="markTraded('${lid}')">✅ Traded</button>`:''}
+            ? `${!l.traded
+                ? `<button class="btn btn-sm btn-submit" onclick="markTraded('${lid}')">✅ Traded</button>
+                   <button class="btn btn-sm btn-secondary" onclick="openEditListingPhotos('${lid}')">📷 Photos</button>`
+                : ''}
                <button class="btn btn-sm btn-danger" onclick="deleteListing('${lid}')">Remove</button>`
             : `<button class="btn btn-sm btn-secondary" ${l.traded?'disabled':''} onclick="${l.traded?'':("openMsgById('"+lid+"')")}">${l.traded?'Traded':'💬 Message'}</button>`
           }
