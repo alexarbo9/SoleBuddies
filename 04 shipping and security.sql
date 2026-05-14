@@ -1,21 +1,11 @@
 -- =============================================
 -- SOLEMATES — Update 4: Shipping, Security, System Messages
 -- Run in Supabase → SQL Editor → New Query → Run
+-- Requires: listings + messages from solemates-setup 3.sql first
+-- Safe to re-run (idempotent realtime + policy drops + IF NOT EXISTS)
 -- =============================================
 
--- Add shipping fields to profiles (private, never public)
-alter table profiles add column if not exists first_name text;
-alter table profiles add column if not exists last_name  text;
-alter table profiles add column if not exists address    text;
-alter table profiles add column if not exists city       text;
-alter table profiles add column if not exists state      text;
-alter table profiles add column if not exists zip        text;
-alter table profiles add column if not exists country    text;
-
--- Add is_system flag to messages (for trade progress notifications)
-alter table messages add column if not exists is_system boolean not null default false;
-
--- Make sure trades table exists with all needed columns
+-- Base tables first (profiles must exist before we alter it below)
 create table if not exists trades (
   id                 uuid primary key default gen_random_uuid(),
   listing_id         uuid not null references listings(id) on delete cascade,
@@ -30,7 +20,6 @@ create table if not exists trades (
   created_at         timestamptz not null default now()
 );
 
--- Make sure profiles table exists
 create table if not exists profiles (
   id               uuid primary key references auth.users(id) on delete cascade,
   username         text unique not null,
@@ -48,6 +37,18 @@ create table if not exists profiles (
   created_at       timestamptz not null default now()
 );
 
+-- Add shipping fields to profiles (private, never public)
+alter table profiles add column if not exists first_name text;
+alter table profiles add column if not exists last_name  text;
+alter table profiles add column if not exists address    text;
+alter table profiles add column if not exists city       text;
+alter table profiles add column if not exists state      text;
+alter table profiles add column if not exists zip        text;
+alter table profiles add column if not exists country    text;
+
+-- Add is_system flag to messages (for trade progress notifications)
+alter table messages add column if not exists is_system boolean not null default false;
+
 -- Add user_id to listings if not already there
 alter table listings add column if not exists user_id uuid references auth.users(id);
 
@@ -61,9 +62,22 @@ create index if not exists idx_trades_listing    on trades(listing_id);
 create index if not exists idx_trades_users      on trades(lister_username, requester_username);
 create index if not exists idx_profiles_username on profiles(username);
 
--- Realtime for trades and profiles
-alter publication supabase_realtime add table trades;
-alter publication supabase_realtime add table profiles;
+-- Realtime for trades and profiles (skip if already in publication — avoids ERROR 42710)
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'trades'
+  ) then
+    alter publication supabase_realtime add table public.trades;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'profiles'
+  ) then
+    alter publication supabase_realtime add table public.profiles;
+  end if;
+end $$;
 
 -- RLS: Profiles
 alter table profiles enable row level security;
@@ -97,11 +111,13 @@ create policy "Authenticated users can update trades"
 
 -- RLS: Listings (tighten — only owner can update/delete)
 drop policy if exists "Owner can deactivate listing" on listings;
+drop policy if exists "Owner can update own listing" on listings;
 create policy "Owner can update own listing"
   on listings for update using (auth.uid() = user_id);
 
 -- RLS: Messages (tighten — only authenticated users can send)
 drop policy if exists "Anyone can send a message" on messages;
+drop policy if exists "Authenticated users can send messages" on messages;
 create policy "Authenticated users can send messages"
   on messages for insert with check (auth.role() = 'authenticated');
 

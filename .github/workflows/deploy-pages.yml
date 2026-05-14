@@ -27,6 +27,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          # Magic links always return here (not localhost) even if someone tests from a dev server
+          SITE_ORIGIN: https://alexarbo9.github.io/SoleBuddies/
         run: node scripts/write-supabase-config.cjs
       - name: Assemble publish folder
         run: |
