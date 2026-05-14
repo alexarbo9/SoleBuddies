@@ -132,6 +132,16 @@ nav { background:var(--navy); border-bottom:3px solid var(--ink); padding:0 1.5r
 .trust-trusted { background:var(--lemon); color:#b45309; }
 .trust-legend { background:linear-gradient(135deg,#ffd700,#ff8c00); color:white; }
 
+/* LISTING PHOTOS */
+.listing-photo-strip { display:flex; gap:5px; padding:6px 8px; background:linear-gradient(180deg,var(--cream),var(--white)); border-bottom:2px solid var(--navy); flex-wrap:wrap; }
+.listing-thumb { padding:0;border:2px solid var(--navy);border-radius:10px;overflow:hidden;background:var(--cream);cursor:pointer;line-height:0;flex-shrink:0; }
+.listing-thumb:focus { outline:2px solid var(--coral); outline-offset:2px; }
+.listing-thumb img { width:92px;height:92px;object-fit:cover;display:block; }
+.listing-photo-preview { display:flex; flex-wrap:wrap; gap:8px; margin-top:0.5rem; min-height:0; }
+.listing-photo-preview-thumb { position:relative;width:80px;height:80px;border-radius:10px;border:2px solid var(--navy);overflow:hidden;background:var(--cream); }
+.listing-photo-preview-thumb img { width:100%;height:100%;object-fit:cover;display:block; }
+.listing-photo-remove { position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:2px solid var(--navy);background:var(--lemon);cursor:pointer;font-weight:900;font-size:0.75rem;line-height:1;padding:0;display:flex;align-items:center;justify-content:center; }
+
 /* LOADING / EMPTY */
 .loading-state { text-align:center; padding:4rem 2rem; color:#7a6a9a; grid-column:1/-1; }
 .spinner { width:40px; height:40px; border:4px solid var(--lavender); border-top-color:var(--navy); border-radius:50%; animation:spin 0.75s linear infinite; margin:0 auto 1rem; }
@@ -152,6 +162,8 @@ nav { background:var(--navy); border-bottom:3px solid var(--ink); padding:0 1.5r
 /* OVERLAYS */
 .overlay { position:fixed; inset:0; background:rgba(26,26,78,0.65); z-index:200; display:none; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(3px); }
 .overlay.open { display:flex; }
+.overlay.photo-lightbox-overlay { z-index:220; cursor:pointer; }
+.overlay.photo-lightbox-overlay img { cursor:default; }
 .modal { background:var(--white); border:3px solid var(--navy); border-radius:20px; width:100%; max-width:500px; overflow:hidden; animation:popIn 0.25s cubic-bezier(.34,1.56,.64,1); max-height:92vh; display:flex; flex-direction:column; box-shadow:var(--shadow-lg); }
 @keyframes popIn { from{transform:scale(0.88) translateY(10px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
 .modal-header { background:var(--navy); padding:1.25rem 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; border-bottom:3px solid var(--ink); }
@@ -528,6 +540,12 @@ footer { position:relative; z-index:1; background:var(--navy); border-top:3px so
         </div>
       </div>
       <div class="form-group">
+        <label>Photos <span style="font-size:0.72rem;font-weight:700;color:var(--mid-gray);text-transform:none;letter-spacing:0">(optional · up to 3 · JPG or WebP)</span></label>
+        <input type="file" id="input-listing-photos" accept="image/jpeg,image/webp,.jpg,.jpeg,.webp" multiple onchange="onListingPhotosChange(event)" />
+        <div class="form-hint">We resize in your browser (~2&nbsp;MB max each, free‑tier friendly).</div>
+        <div class="listing-photo-preview" id="listing-photo-preview" aria-live="polite"></div>
+      </div>
+      <div class="form-group">
         <label>Notes (optional)</label>
         <textarea id="input-notes" placeholder="Color, width, width notes — swap ideas okay too (e.g. open to trading two simpler shoes for one pricier one). Keep it honest and simple." maxlength="500"></textarea>
       </div>
@@ -578,6 +596,13 @@ footer { position:relative; z-index:1; background:var(--navy); border-top:3px so
 
 <div class="toast" id="toast"></div>
 
+<div class="overlay photo-lightbox-overlay" id="photo-lightbox-overlay" onclick="closePhotoLightbox(event)">
+  <div style="position:relative;max-width:min(96vw,920px)" onclick="event.stopPropagation()">
+    <button type="button" class="modal-close" style="position:absolute;right:-4px;top:-40px;background:var(--navy)" onclick="closePhotoLightbox()" aria-label="Close">✕</button>
+    <img id="photo-lightbox-img" src="" alt="Listing photo enlarged" style="width:100%;max-height:86vh;border-radius:16px;border:3px solid var(--navy);box-shadow:var(--shadow-lg);object-fit:contain;background:var(--white)" />
+  </div>
+</div>
+
 <script src="supabase-config.js"></script>
 <script>
 const _sbCfg = window.__SOLEBUDDIES_SUPABASE;
@@ -612,6 +637,12 @@ let activeTrade = null;
 let selectedSide = null;
 let msgChannel = null;
 let afterAuth = null;
+
+const STORAGE_BUCKET = 'listing-photos';
+const MAX_LISTING_PHOTOS = 3;
+const MAX_LISTING_PHOTO_BYTES = 2 * 1024 * 1024;
+const LISTING_IMG_MAX_EDGE = 1600;
+let listingStagingBlobs = []; // { blob, previewUrl }
 
 // ── SECURITY HELPERS ──────────────────────────────────────
 // Escape HTML to prevent XSS
@@ -866,6 +897,112 @@ async function saveProfile() {
   document.getElementById('edit-error').classList.remove('show');
 }
 
+// ── LISTING PHOTO HELPERS ─────────────────────────────────
+function listingPhotoPublicUrl(storagePath) {
+  if (!storagePath) return '';
+  const { data } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
+  return data.publicUrl || '';
+}
+
+function clearListingPhotoStaging() {
+  listingStagingBlobs.forEach((x) => { try { URL.revokeObjectURL(x.previewUrl); } catch(_){} });
+  listingStagingBlobs = [];
+  const prev = document.getElementById('listing-photo-preview');
+  if (prev) prev.innerHTML = '';
+  const inp = document.getElementById('input-listing-photos');
+  if (inp) inp.value = '';
+}
+
+function renderListingPhotoPreview() {
+  const prev = document.getElementById('listing-photo-preview');
+  if (!prev) return;
+  prev.innerHTML = listingStagingBlobs.map((slot, idx) =>
+    `<div class="listing-photo-preview-thumb">
+      <img src="${slot.previewUrl}" alt="" />
+      <button type="button" class="listing-photo-remove" onclick="removeListingStagingAt(${idx})" aria-label="Remove photo">✕</button>
+    </div>`
+  ).join('');
+}
+
+window.removeListingStagingAt = function (idx) {
+  const x = listingStagingBlobs.splice(idx, 1)[0];
+  if (x) try { URL.revokeObjectURL(x.previewUrl); } catch(_){}
+  renderListingPhotoPreview();
+};
+
+async function prepareListingPhotoBlob(file) {
+  const ok = ['image/jpeg', 'image/webp'];
+  if (!ok.includes(file.type)) throw new Error('Please use JPG or WebP.');
+  const cap = MAX_LISTING_PHOTO_BYTES * 3;
+  if (file.size > cap) throw new Error('Pick a smaller original — file is too large.');
+  const bmp = await createImageBitmap(file);
+  let w = bmp.width;
+  let h = bmp.height;
+  const edge = LISTING_IMG_MAX_EDGE;
+  if (w > edge || h > edge) {
+    const s = edge / Math.max(w, h);
+    w = Math.round(w * s);
+    h = Math.round(h * s);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bmp, 0, 0, w, h);
+  bmp.close();
+  let q = 0.86;
+  let blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', q));
+  while (blob && blob.size > MAX_LISTING_PHOTO_BYTES && q > 0.45) {
+    q -= 0.07;
+    blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', q));
+  }
+  if (!blob || blob.size > MAX_LISTING_PHOTO_BYTES) {
+    throw new Error('Could not compress below 2 MB — try another photo.');
+  }
+  return blob;
+}
+
+window.onListingPhotosChange = async function (ev) {
+  const input = ev.target;
+  document.getElementById('list-error').classList.remove('show');
+  const picked = Array.from(input.files || []);
+  if (!picked.length) {
+    clearListingPhotoStaging();
+    return;
+  }
+  clearListingPhotoStaging();
+  input.value = '';
+  const todo = picked.slice(0, MAX_LISTING_PHOTOS);
+  if (picked.length > MAX_LISTING_PHOTOS) {
+    showToast(`Using first ${MAX_LISTING_PHOTOS} photos.`);
+  }
+  for (const raw of todo) {
+    try {
+      const blob = await prepareListingPhotoBlob(raw);
+      listingStagingBlobs.push({ blob, previewUrl: URL.createObjectURL(blob) });
+    } catch (err) {
+      clearListingPhotoStaging();
+      showAlert('list-error', err.message || String(err));
+      renderListingPhotoPreview();
+      return;
+    }
+  }
+  renderListingPhotoPreview();
+};
+
+window.openPhotoLightbox = function (url) {
+  const img = document.getElementById('photo-lightbox-img');
+  const box = document.getElementById('photo-lightbox-overlay');
+  img.src = url;
+  box.classList.add('open');
+};
+
+window.closePhotoLightbox = function (ev) {
+  document.getElementById('photo-lightbox-overlay').classList.remove('open');
+  const img = document.getElementById('photo-lightbox-img');
+  img.removeAttribute('src');
+};
+
 // ── LISTINGS ──────────────────────────────────────────────
 async function loadListings() {
   try {
@@ -927,7 +1064,15 @@ function renderListings(filter) {
     const gCls=l.gender==='Mens'?'mens':l.gender==='Womens'?'womens':'unisex';
     const loc=l.state&&l.country?`${esc(l.state)}, ${esc(l.country)}`:esc(l.country||'');
     const profile=l.profiles||{};
+    const photoUrls = Array.isArray(l.photo_urls) ? l.photo_urls : [];
+    const photoHtml = photoUrls.length
+      ? '<div class="listing-photo-strip">' + photoUrls.map((pth) => {
+          const pub = listingPhotoPublicUrl(pth);
+          return `<button type="button" class="listing-thumb" aria-label="View photo" onclick="openPhotoLightbox(${JSON.stringify(pub)})"><img loading="lazy" src="${esc(pub)}" alt="" /></button>`;
+        }).join('') + '</div>'
+      : '';
     return `<div class="listing-card ${isMatch?'match-glow':''} ${l.traded?'traded-card':''}">
+      ${photoHtml}
       ${l.traded?'<div class="traded-bar">✅ Already Traded</div>':''}
       ${isMatch&&!l.traded?'<div class="match-badge">✨ Match!</div>':''}
       <div class="card-top">
@@ -976,8 +1121,14 @@ function filterListings(filter,btn) {
 
 async function deleteListing(id) {
   if(!confirm('Remove this listing?')) return;
-  await sb.from('listings').update({active:false}).eq('id',id).eq('user_id',currentUser.id);
+  const { data: row } = await sb.from('listings').select('photo_urls').eq('id', id).eq('user_id', currentUser.id).maybeSingle();
+  const paths = (row && Array.isArray(row.photo_urls)) ? row.photo_urls.filter(Boolean) : [];
+  await sb.from('listings').update({ active:false }).eq('id',id).eq('user_id',currentUser.id);
+  if (paths.length) {
+    await sb.storage.from(STORAGE_BUCKET).remove(paths);
+  }
   showToast('Listing removed!');
+  loadListings();
 }
 
 async function markTraded(id) {
@@ -989,6 +1140,7 @@ async function markTraded(id) {
 // ── LIST MODAL ────────────────────────────────────────────
 function openListModal() {
   requireAuth(()=>{
+    clearListingPhotoStaging();
     ['input-brand','input-style','input-notes','input-state'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('input-size').value='';
     document.getElementById('input-gender').value='Mens';
@@ -1029,15 +1181,41 @@ async function submitListing() {
   }
   const btn=document.getElementById('list-btn');
   btn.textContent='Posting…'; btn.disabled=true;
-  const {error}=await sb.from('listings').insert([{
-    user_id:currentUser.id, username:currentProfile.username,
-    brand, style:style||'Shoe', size, gender, side:selectedSide,
-    condition, country, state, notes, active:true, traded:false
-  }]);
-  btn.textContent='Post Listing ✨'; btn.disabled=false;
-  if(error){ showAlert('list-error',error.message); return; }
-  document.getElementById('list-success').classList.add('show');
-  setTimeout(()=>closeModal('list-overlay'),2000);
+  document.getElementById('list-error').classList.remove('show');
+
+  const blobs = listingStagingBlobs.map((s) => s.blob);
+  const uploadId = crypto.randomUUID();
+  const paths=[];
+  try {
+    for(let i=0;i<blobs.length;i++){
+      const path=`${currentUser.id}/${uploadId}_${i}.jpg`;
+      const { error: ue } = await sb.storage.from(STORAGE_BUCKET).upload(path, blobs[i], {
+        contentType: 'image/jpeg',
+        cacheControl: '86400'
+      });
+      if(ue) throw new Error(ue.message);
+      paths.push(path);
+    }
+    const { error } = await sb.from('listings').insert([{
+      user_id:currentUser.id, username:currentProfile.username,
+      brand, style:style||'Shoe', size, gender, side:selectedSide,
+      condition, country, state, notes, active:true, traded:false,
+      photo_urls: paths
+    }]);
+    if(error){
+      if(paths.length) await sb.storage.from(STORAGE_BUCKET).remove(paths);
+      throw new Error(error.message);
+    }
+    clearListingPhotoStaging();
+    document.getElementById('list-success').classList.add('show');
+    loadListings();
+    setTimeout(()=>closeModal('list-overlay'),2000);
+  } catch(e) {
+    if(paths.length) await sb.storage.from(STORAGE_BUCKET).remove(paths).catch(()=>{});
+    showAlert('list-error', e.message||String(e));
+  } finally {
+    btn.textContent='Post Listing ✨'; btn.disabled=false;
+  }
 }
 
 // ── MESSAGES ──────────────────────────────────────────────
@@ -1052,7 +1230,12 @@ async function openMsg(listing) {
     const gLabel=sizingScaleLabel(listing.gender);
     const pUsername=listing.profiles?.username||listing.username||'?';
     document.getElementById('msg-title').textContent=`💬 Message @${esc(pUsername)}`;
-    document.getElementById('msg-info').innerHTML=`<strong>${esc(listing.brand)} ${esc(listing.style||'')}</strong> · ${esc(listing.side)} · ${gLabel} · US ${esc(listing.size)}${listing.country?' · 📍 '+esc(listing.country):''} · <span style="color:#7a6a9a">@${esc(pUsername)}</span>`;
+    const imgs = Array.isArray(listing.photo_urls) ? listing.photo_urls : [];
+    const lead = imgs.length
+      ? `<div style="margin-bottom:0.65rem;line-height:0;text-align:center"><img src="${esc(listingPhotoPublicUrl(imgs[0]))}" alt="" style="max-width:100%;max-height:150px;border-radius:10px;border:2px solid var(--navy);object-fit:cover" /></div>`
+      : '';
+    document.getElementById('msg-info').innerHTML=lead+
+      `<strong>${esc(listing.brand)} ${esc(listing.style||'')}</strong> · ${esc(listing.side)} · ${gLabel} · US ${esc(listing.size)}${listing.country?' · 📍 '+esc(listing.country):''} · <span style="color:#7a6a9a">@${esc(pUsername)}</span>`;
     document.getElementById('msg-thread').innerHTML='<div class="no-msgs">Loading… 💫</div>';
     document.getElementById('trade-flow').style.display='none';
     document.getElementById('rating-section').style.display='none';
