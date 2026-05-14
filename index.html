@@ -593,6 +593,14 @@ const sb = supabase.createClient(_sbCfg.url, _sbCfg.key, {
   auth: { persistSession: true, detectSessionInUrl: true }
 });
 
+function getAuthEmailRedirectTo() {
+  const fixed = _sbCfg.siteOrigin;
+  if (fixed && typeof fixed === 'string' && /^https?:\/\//.test(fixed)) {
+    return fixed.replace(/\/?$/, '/');
+  }
+  return window.location.origin + (window.location.pathname || '/');
+}
+
 let currentUser = null;
 let currentProfile = null;
 let allListings = [];
@@ -727,7 +735,7 @@ async function sendMagicLink() {
   btn.textContent = 'Sending…'; btn.disabled = true;
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.origin + window.location.pathname }
+    options: { emailRedirectTo: getAuthEmailRedirectTo() }
   });
   if (error) {
     btn.textContent = 'Send Magic Link ✨'; btn.disabled = false;
